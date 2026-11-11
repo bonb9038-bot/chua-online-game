@@ -1,5 +1,9 @@
 // Chùa Online 3D — client phòng chung (Three.js + Socket.io)
 // Đi bộ WASD, kéo chuột xoay camera, chạm để đi, làm lễ như thật.
+// (Phải định nghĩa $ ở ngay đầu file: các đoạn code phía dưới dùng $ ở mức top-level,
+// nếu $ khai báo sau sẽ lỗi "Cannot access '$' before initialization" và toàn bộ
+// script chết — màn hình đăng nhập không hiện nhân vật, nút "Vào chùa" không bấm được.)
+const $ = (id) => document.getElementById(id);
 const AVATARS = [
   { emoji: '🧒', label: 'Chú tiểu', robe: 0x8d6e63, skin: 0xf2c89b, hair: 'topknot' },
   { emoji: '👩‍🦲', label: 'Sư cô', robe: 0x6d4c41, skin: 0xf2c89b, hair: 'none' },
@@ -1676,7 +1680,6 @@ let nearestNpc = null;
 let nearestQuiz = false;
 let npcTalkTarget = null; // npcId đang đứng gần để mở đối thoại khi bấm E
 
-const $ = (id) => document.getElementById(id);
 const loginScreen = $('loginScreen'), gameScreen = $('gameScreen');
 
 // ---- Âm thanh chuông / mõ / tụng bằng Web Audio (không cần file ngoài) ----
