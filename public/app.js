@@ -318,7 +318,7 @@ const CIRCLE_COLLIDERS = [
   { x: 0, z: -8, r: 2.1 },      // lư hương lớn
   { x: -14, z: -10, r: 1.9 },   // giá chuông
   { x: 14, z: -10, r: 1.9 },    // trống
-  { x: 17, z: 9, r: 5.1 },      // ao sen
+  { x: 17, z: 9, r: 6.1 },      // ao sen (đã làm to + cầu gỗ)
   { x: -18, z: 6, r: 0.9 }, { x: -20, z: -4, r: 0.9 }, { x: 19, z: -4, r: 0.9 },
   { x: -8, z: 14, r: 0.9 }, { x: 10, z: 14, r: 0.9 }, // cây bonsai
   { x: -6, z: -2, r: 0.7 }, { x: 6, z: -2, r: 0.7 }, { x: -12, z: 12, r: 0.7 }, { x: 12, z: 12, r: 0.7 }, // đèn đá
@@ -590,17 +590,44 @@ function buildTemple() {
   buildLogoPlaque();
 }
 
-// ---- Logo NOVASKY trên tường chùa, chính giữa phía trên tượng Phật ----
+// ---- Logo NOVASKY: bảng lớn treo ngay mặt tiền chính điện, nhìn từ sân là thấy ----
+// (Bản cũ đặt ở tường sau trong điện nên từ sân không nhìn thấy.)
 function buildLogoPlaque() {
   const loader = new THREE.TextureLoader();
   loader.load('logo-novasky.png', (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    const frame = box(4.0, 2.1, 0.1, 0xd4af37, { metalness: 0.7, roughness: 0.3 });
-    frame.position.set(0, 5.9, -19.56);
+    // Khung vàng + bảng logo treo giữa lối vào chính điện, dưới biển CHÙA AN NHIÊN
+    const frame = box(5.4, 2.4, 0.12, 0xd4af37, { metalness: 0.7, roughness: 0.3 });
+    frame.position.set(0, 3.4, -10.85);
     scene.add(frame);
-    const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 1.8),
+    const plaque = new THREE.Mesh(new THREE.PlaneGeometry(5.1, 2.1),
       new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
-    plaque.position.set(0, 5.9, -19.5);
+    plaque.position.set(0, 3.4, -10.78);
+    scene.add(plaque);
+    // Thanh treo vàng phía trên bảng
+    const bar = box(5.4, 0.12, 0.12, 0xd4af37, { metalness: 0.7, roughness: 0.3 });
+    bar.position.set(0, 4.68, -10.85);
+    scene.add(bar);
+    // Giữ thêm một bảng nhỏ trên tường sau trong điện (nhìn thấy khi vào trong lễ Phật)
+    const frame2 = box(4.0, 2.1, 0.1, 0xd4af37, { metalness: 0.7, roughness: 0.3 });
+    frame2.position.set(0, 5.9, -19.56);
+    scene.add(frame2);
+    const plaque2 = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 1.8),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
+    plaque2.position.set(0, 5.9, -19.5);
+    scene.add(plaque2);
+  }, undefined, () => {
+    // Nếu ảnh logo lỗi, vẫn hiện chữ NOVASKY để không mất logo
+    const fallbackTex = canvasTexture((ctx, w, h) => {
+      ctx.fillStyle = '#0b2a5b'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 8; ctx.strokeRect(6, 6, w - 12, h - 12);
+      ctx.fillStyle = '#ffd700'; ctx.font = 'bold 72px serif'; ctx.textAlign = 'center';
+      ctx.fillText('NOVASKY', w / 2, h / 2 - 10);
+      ctx.font = '36px serif'; ctx.fillText('Niềm vui sum vầy', w / 2, h / 2 + 50);
+    }, 512, 256);
+    const plaque = new THREE.Mesh(new THREE.PlaneGeometry(5.1, 2.1),
+      new THREE.MeshStandardMaterial({ map: fallbackTex, roughness: 0.6 }));
+    plaque.position.set(0, 3.4, -10.78);
     scene.add(plaque);
   });
 }
@@ -830,11 +857,24 @@ function buildLanterns() {
 // ---- Ao sen ----
 function buildPond() {
   const g = new THREE.Group();
-  const water = new THREE.Mesh(new THREE.CircleGeometry(4.5, 36),
-    new THREE.MeshStandardMaterial({ color: 0x3b82c4, roughness: 0.12, metalness: 0.25 }));
+  // Mặt nước lớn, xanh sáng, nhìn từ sân là thấy ngay
+  const water = new THREE.Mesh(new THREE.CircleGeometry(5.5, 40),
+    new THREE.MeshStandardMaterial({ color: 0x2f7fd0, roughness: 0.08, metalness: 0.35, emissive: 0x0a2f55, emissiveIntensity: 0.35 }));
   water.rotation.x = -Math.PI / 2; water.position.y = 0.07; water.receiveShadow = true; g.add(water);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(4.55, 0.22, 10, 40), mat(0x9a8d7a, { roughness: 0.95 }));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(5.55, 0.25, 10, 48), mat(0x9a8d7a, { roughness: 0.95 }));
   rim.rotation.x = Math.PI / 2; rim.position.y = 0.1; g.add(rim);
+  // Cầu gỗ cong bắc qua ao để ai cũng nhận ra đây là ao
+  const bridge = box(7.2, 0.16, 1.4, 0x8d5a2b, { roughness: 0.9 });
+  bridge.position.set(0, 0.55, 0); g.add(bridge);
+  [-0.65, 0.65].forEach((z) => {
+    const rail = box(7.2, 0.12, 0.1, 0x6d4520, { roughness: 0.9 });
+    rail.position.set(0, 1.05, z); g.add(rail);
+  });
+  [-3.2, -1.1, 1.1, 3.2].forEach((x) => {
+    const post = box(0.12, 0.55, 0.12, 0x6d4520, { roughness: 0.9 });
+    post.position.set(x, 0.85, 0.65); g.add(post);
+    const post2 = post.clone(); post2.position.z = -0.65; g.add(post2);
+  });
   // Lá sen + hoa sen
   for (let i = 0; i < 6; i++) {
     const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 2.8;
@@ -857,7 +897,7 @@ function buildPond() {
     const a = (i / 8) * Math.PI * 2 + 0.3;
     const rock = sph(0.3 + Math.random() * 0.2, 0x8a8d90, { roughness: 1 });
     rock.scale.y = 0.6;
-    rock.position.set(Math.sin(a) * 5.1, 0.15, Math.cos(a) * 5.1);
+    rock.position.set(Math.sin(a) * 6.1, 0.15, Math.cos(a) * 6.1);
     g.add(rock);
   }
   g.position.set(17, 0, 9);
