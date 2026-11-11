@@ -7,6 +7,7 @@ button { cursor: pointer; font-family: inherit; }
 .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
   background: linear-gradient(180deg, #ff9a3c 0%, #e2574c 45%, #5b2a4a 100%); }
 .login-card { background: rgba(255, 248, 236, .97); color: #3a2317; border-radius: 20px; padding: 28px 24px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+.login-logo img { width: 200px; max-width: 80%; border-radius: 12px; border: 3px solid #d4af37; box-shadow: 0 0 18px rgba(255,215,0,.5); display: block; margin: 0 auto 8px; }
 .login-temple { font-size: 56px; }
 .login-card h1 { margin: 4px 0; font-size: 34px; color: #a33d00; }
 .subtitle { color: #7a5a3a; margin-top: 0; }
@@ -31,46 +32,40 @@ button { cursor: pointer; font-family: inherit; }
 
 .layout { display: grid; grid-template-columns: 1fr 340px; gap: 14px; padding: 14px; max-width: 1280px; margin: 0 auto; }
 .courtyard-wrap { min-width: 0; }
-.courtyard { position: relative; height: 560px; border-radius: 18px; overflow: hidden; cursor: pointer;
-  background: linear-gradient(180deg, #ff9a3c 0%, #f97362 40%, #7c3f58 62%, #4a7c59 62%, #2f5d3a 100%);
-  border: 3px solid #d9a441; }
-.sky { position: absolute; inset: 0; }
-.sun { position: absolute; top: 14px; right: 22px; font-size: 44px; }
-/* Logo NOVASKY trên tường chùa, chính giữa phía trên tượng Phật */
-.wall-logo { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 2;
-  width: 190px; height: 88px; border: 3px solid #d4af37; border-radius: 12px; overflow: hidden;
-  background: #0b3d91; box-shadow: 0 0 20px rgba(255, 215, 0, .65), 0 4px 14px rgba(0, 0, 0, .55); }
-.wall-logo img { width: 100%; height: 100%; object-fit: cover; object-position: center 50%; display: block; }
-.temple { position: absolute; left: 50%; top: 106px; transform: translateX(-50%); text-align: center; }
-.temple .roof { font-size: 52px; line-height: 1; }
-.temple .buddha { font-size: 60px; line-height: 1; filter: drop-shadow(0 0 18px gold); }
-.buddha-label { background: rgba(0,0,0,.45); border-radius: 999px; padding: 2px 10px; display: inline-block; margin-top: 4px; }
-.lantern { position: absolute; top: 168px; font-size: 40px; }
-.lantern.left { left: 14%; } .lantern.right { right: 14%; }
 
-.spot { position: absolute; transform: translate(-50%, -50%); background: rgba(255,248,236,.92); color: #3a2317; border: 2px solid #c2410c; border-radius: 14px; padding: 8px 10px; font-size: 22px; z-index: 3; }
-.spot span { display: block; font-size: 11px; font-weight: 700; }
-.spot:hover { background: #ffedd5; }
-.spot.altar { left: 50%; top: 46%; }
-.spot.burner { left: 50%; top: 58%; font-size: 28px; }
-.spot.bell { left: 18%; top: 52%; }
-.spot.candle { left: 82%; top: 52%; }
-.spot.flower { left: 30%; top: 76%; }
-.spot.cushion { left: 70%; top: 76%; }
+/* ---- Khung cảnh 3D ---- */
+.scene-wrap { position: relative; height: 560px; border-radius: 18px; overflow: hidden; border: 3px solid #d9a441; background: #1a0f0a; touch-action: none; }
+#scene, #scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.loading-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(180deg, #ff9a3c, #7c3f58); color: #fff; font-size: 18px; font-weight: 700; text-align: center; z-index: 8; }
+.loading-box small { font-weight: 400; font-size: 13px; opacity: .9; }
+.scene-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 13px; margin: 0; z-index: 5; text-shadow: 0 1px 3px #000; color: #fff; pointer-events: none; }
 
-.smoke-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.smoke { position: absolute; font-size: 26px; opacity: .9; animation: rise 3s ease-out forwards; }
-@keyframes rise { from { transform: translateY(0); opacity: .95; } to { transform: translateY(-90px) scale(1.4); opacity: 0; } }
+.prompt-chip { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 6; background: rgba(20,10,5,.9);
+  color: #ffe9b0; border: 2px solid gold; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 14px; white-space: nowrap;
+  box-shadow: 0 0 18px rgba(255,215,0,.5); animation: chipPulse 1.2s ease-in-out infinite alternate; }
+@keyframes chipPulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.05); } }
 
-.players-layer { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-.player { position: absolute; transform: translate(-50%, -100%); text-align: center; transition: left 1.2s ease, top 1.2s ease; width: 90px; margin-left: 0; }
-.player .avatar { font-size: 36px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
-.player .name { background: rgba(0,0,0,.6); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; display: inline-block; white-space: nowrap; }
-.player.me .name { background: #c2410c; }
-.player .bubble { background: #fff; color: #222; font-size: 12px; border-radius: 10px; padding: 4px 8px; margin-bottom: 4px; display: inline-block; max-width: 110px; word-break: break-word; }
-.player .act { font-size: 11px; background: #fde68a; color: #7c2d12; border-radius: 999px; padding: 1px 7px; display: inline-block; margin-top: 2px; font-weight: 700; }
+.glow-banner { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 6;
+  background: linear-gradient(90deg, #b45309, #f59e0b, #b45309); color: #fff; font-weight: 800; font-size: 17px;
+  padding: 10px 18px; border-radius: 999px; box-shadow: 0 0 30px gold; animation: bannerPulse 1s ease-in-out infinite alternate; white-space: nowrap; }
+@keyframes bannerPulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.06); } }
 
-.courtyard-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 13px; margin: 0; z-index: 5; text-shadow: 0 1px 3px #000; }
+.chant-panel { position: absolute; left: 12px; top: 12px; z-index: 6; background: rgba(20, 10, 5, .88); color: #ffe9b0;
+  border: 2px solid gold; border-radius: 14px; padding: 12px 14px; max-width: 300px; text-align: center; }
+.chant-beads { font-size: 20px; letter-spacing: 2px; margin-bottom: 6px; }
+.chant-beads .bead.active { color: #ffd700; text-shadow: 0 0 10px gold; font-size: 24px; }
+.chant-phrase { font-size: 18px; font-weight: 800; color: #fff; min-height: 26px; }
+.chant-count { font-size: 13px; margin: 6px 0 10px; }
+.chant-btn { background: #7c3aed !important; }
+.chant-btn:hover { background: #5b21b6 !important; }
+.chant-btn.active { background: #16a34a !important; }
+
+/* Cần gạt ảo trên điện thoại */
+.joystick { position: absolute; left: 18px; bottom: 44px; width: 110px; height: 110px; border-radius: 50%; z-index: 7;
+  background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.45); touch-action: none; }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(255,255,255,.75); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 
 .action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .action-bar button { flex: 1 1 30%; padding: 12px 8px; border: none; border-radius: 12px; background: #c2410c; color: #fff; font-size: 15px; font-weight: 700; }
@@ -93,59 +88,11 @@ button { cursor: pointer; font-family: inherit; }
 .chat-form input { flex: 1; padding: 10px; border: 2px solid #d9b380; border-radius: 10px; font-size: 14px; min-width: 0; }
 .chat-form button { padding: 10px 16px; border: none; border-radius: 10px; background: #c2410c; color: #fff; font-weight: 700; }
 
-/* ---- Phật phát sáng khi lễ Phật (hiện cho cả phòng) ---- */
-.temple { z-index: 2; }
-.rays { position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255, 215, 0, .95) 0%, rgba(255, 180, 0, .45) 40%, transparent 70%);
-  border-radius: 50%; opacity: 0; pointer-events: none; }
-.temple.glowing .rays { opacity: 1; animation: raysSpin 6s linear infinite; }
-@keyframes raysSpin { from { transform: translate(-50%, -50%) rotate(0deg) scale(1); } to { transform: translate(-50%, -50%) rotate(360deg) scale(1.25); } }
-.temple.glowing .buddha { animation: buddhaRise 6s ease-in-out; filter: drop-shadow(0 0 28px gold) drop-shadow(0 0 60px #ffd700); }
-@keyframes buddhaRise {
-  0% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(-26px) scale(1.28); }
-  60% { transform: translateY(-30px) scale(1.35); }
-  100% { transform: translateY(0) scale(1); }
-}
-.courtyard.buddha-glow { animation: courtyardGlow 6s ease-in-out; }
-@keyframes courtyardGlow {
-  0%, 100% { filter: brightness(1); box-shadow: inset 0 0 0 rgba(255, 215, 0, 0); }
-  30%, 60% { filter: brightness(1.35) saturate(1.2); box-shadow: inset 0 0 90px rgba(255, 215, 0, .85); }
-}
-.glow-banner { position: absolute; left: 50%; top: 50%; transform: translateX(-50%); z-index: 6;
-  background: linear-gradient(90deg, #b45309, #f59e0b, #b45309); color: #fff; font-weight: 800; font-size: 17px;
-  padding: 10px 18px; border-radius: 999px; box-shadow: 0 0 30px gold; animation: bannerPulse 1s ease-in-out infinite alternate; white-space: nowrap; }
-@keyframes bannerPulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.06); } }
-.lotus-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
-.petal { position: absolute; top: -30px; font-size: 24px; animation: petalFall 5s linear forwards; }
-@keyframes petalFall { from { transform: translateY(0) rotate(0deg); opacity: 1; } to { transform: translateY(580px) rotate(320deg); opacity: .2; } }
-
-/* ---- Niệm Phật: hào quang + tràng hạt + bảng kinh ---- */
-.player .halo { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 64px; height: 64px;
-  border-radius: 50%; border: 3px solid gold; box-shadow: 0 0 18px gold, inset 0 0 12px rgba(255,215,0,.7);
-  display: none; pointer-events: none; }
-.player.chanting .halo { display: block; animation: haloPulse 2.8s ease-in-out infinite; }
-.player.chanting .avatar { filter: drop-shadow(0 0 14px gold); }
-@keyframes haloPulse { 0%, 100% { opacity: .6; transform: translateX(-50%) scale(.92); } 50% { opacity: 1; transform: translateX(-50%) scale(1.08); } }
-.player .beads { font-size: 15px; display: none; letter-spacing: 1px; }
-.player.chanting .beads { display: block; }
-.chant-panel { position: absolute; left: 12px; top: 12px; z-index: 6; background: rgba(20, 10, 5, .88); color: #ffe9b0;
-  border: 2px solid gold; border-radius: 14px; padding: 12px 14px; max-width: 300px; text-align: center; }
-.chant-beads { font-size: 20px; letter-spacing: 2px; margin-bottom: 6px; }
-.chant-beads .bead.active { color: #ffd700; text-shadow: 0 0 10px gold; font-size: 24px; }
-.chant-phrase { font-size: 18px; font-weight: 800; color: #fff; min-height: 26px; }
-.chant-count { font-size: 13px; margin: 6px 0 10px; }
-.chant-btn { background: #7c3aed !important; }
-.chant-btn:hover { background: #5b21b6 !important; }
-.chant-btn.active { background: #16a34a !important; }
-
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
-  .courtyard { height: 480px; }
-  .wall-logo { width: 150px; height: 70px; top: 8px; }
-  .temple { top: 86px; }
-  .temple .buddha { font-size: 48px; }
-  .temple .roof { font-size: 42px; }
-  .lantern { top: 140px; }
-  .spot { font-size: 18px; padding: 6px 8px; }
+  .scene-wrap { height: 480px; }
+  .scene-hint { font-size: 11px; bottom: 4px; }
+  .prompt-chip { bottom: 40px; font-size: 13px; }
+  .chant-panel { max-width: 230px; padding: 8px 10px; }
+  .chant-phrase { font-size: 15px; }
 }

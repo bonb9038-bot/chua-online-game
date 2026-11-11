@@ -9,8 +9,12 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 const PORT = process.env.PORT || 3000;
 
+// ---- Kích thước sân chùa 3D (mét) ----
+const BOUNDS = { minX: -26, maxX: 26, minZ: -20, maxZ: 20 };
+
 // ---- Shared room state (in-memory) ----
-const players = {}; // socketId -> { id, name, avatar, x, y, action, actionAt }
+// players: socketId -> { id, name, avatar, x, z, rot, action, actionAt }
+const players = {};
 const chatMessages = []; // keep last 50: { name, avatar, text, time }
 const activityFeed = []; // keep last 30: { text, time }
 const counters = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0 };
@@ -31,8 +35,11 @@ function roomState() {
     feed: activityFeed,
   };
 }
-function broadcastState() {
-  io.emit('roomState', roomState());
+function clampPos(x, z) {
+  return {
+    x: Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, Number(x) || 0)),
+    z: Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, Number(z) || 0)),
+  };
 }
 
 // Static files
@@ -50,8 +57,10 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: cleanName,
       avatar: cleanAvatar,
-      x: 50 + (Math.random() * 20 - 10),
-      y: 68 + (Math.random() * 10 - 5),
+      // Spawn gần cổng tam quan phía Nam, hướng mặt về chính điện (hướng Bắc)
+      x: Math.random() * 8 - 4,
+      z: 15 + Math.random() * 2,
+      rot: Math.PI,
       action: null,
       actionAt: null,
     };
@@ -61,13 +70,16 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('roomState', roomState());
   });
 
-  socket.on('move', ({ x, y } = {}) => {
+  // Đồng bộ di chuyển 3D: x/z (mét), rot (góc quay quanh trục Y, radian)
+  socket.on('move', ({ x, z, rot } = {}) => {
     const p = players[socket.id];
     if (!p) return;
-    p.x = Math.max(2, Math.min(98, Number(x) || p.x));
-    p.y = Math.max(5, Math.min(95, Number(y) || p.y));
+    const c = clampPos(x, z);
+    p.x = c.x;
+    p.z = c.z;
+    if (typeof rot === 'number' && isFinite(rot)) p.rot = rot;
     p.action = null;
-    socket.broadcast.emit('playerMoved', { id: p.id, x: p.x, y: p.y });
+    socket.broadcast.emit('playerMoved', { id: p.id, x: p.x, z: p.z, rot: p.rot });
   });
 
   socket.on('action', ({ type, count, phrase } = {}) => {
@@ -94,7 +106,7 @@ io.on('connection', (socket) => {
       chantTimers[socket.id] = setTimeout(() => {
         if (players[socket.id] && players[socket.id].action === 'niemPhat') {
           players[socket.id].action = null;
-          io.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
+          io.emit('playerMoved', { id: socket.id, x: players[socket.id].x, z: players[socket.id].z, rot: players[socket.id].rot });
         }
       }, 10000);
       return;
@@ -129,7 +141,7 @@ io.on('connection', (socket) => {
     setTimeout(() => {
       if (players[socket.id] && players[socket.id].action !== 'niemPhat') {
         players[socket.id].action = null;
-        io.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
+        io.emit('playerMoved', { id: socket.id, x: players[socket.id].x, z: players[socket.id].z, rot: players[socket.id].rot });
       }
     }, 4000);
   });
@@ -170,5 +182,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Chùa Online đang chạy tại http://localhost:${PORT}`);
+  console.log(`Chùa Online 3D đang chạy tại http://localhost:${PORT}`);
 });
