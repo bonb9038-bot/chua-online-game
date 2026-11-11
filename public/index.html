@@ -25,6 +25,11 @@
       <p class="label">Chọn nhân vật của bạn</p>
       <div id="avatarGrid" class="avatar-grid"></div>
       <button id="joinBtn" class="btn-primary">🙏 Vào chùa</button>
+      <div id="continueBox" class="continue-box hidden">
+        <p id="continueText" class="continue-text"></p>
+        <button id="continueBtn" class="btn-primary btn-continue">▶️ Chơi tiếp</button>
+        <p class="continue-note">Tiến độ được lưu trên thiết bị này. Bấm “Tạo nhân vật mới” sẽ hỏi trước khi ghi đè tiến độ cũ.</p>
+      </div>
       <p class="hint">Đi bộ bằng phím W A S D hoặc cần gạt trên điện thoại, kéo chuột để xoay camera. Mọi người vào cùng một phòng sẽ thấy nhau đi lại, thắp hương và chat theo thời gian thực.</p>
     </div>
   </div>
@@ -35,8 +40,11 @@
       <div class="brand">🛕 <strong>Chùa Online 3D</strong> <span class="room-tag">Phòng chung</span></div>
       <div class="top-right">
         <span id="onlineCount" class="online-count">🟢 0 người đang online</span>
+        <span id="meritLabel" class="merit-label" title="Công đức của bạn">🪷 0 công đức • Phật tử mới</span>
         <span id="meLabel" class="me-label"></span>
         <button id="soundBtn" class="btn-small" title="Bật / tắt tiếng chuông và tiếng tụng">🔊 Âm thanh: Bật</button>
+        <button id="musicBtn" class="btn-small" title="Bật / tắt nhạc nền đọc kinh">🎵 Nhạc: Bật</button>
+        <input id="musicVol" type="range" min="0" max="100" value="40" class="music-vol" title="Âm lượng nhạc nền">
         <button id="leaveBtn" class="btn-small">Rời chùa</button>
       </div>
     </header>
@@ -67,6 +75,37 @@
           <button data-action="hoa">🌸 Dâng hoa</button>
           <button data-action="thien">🧘 Ngồi thiền</button>
           <button id="chantBtn" class="chant-btn">📿 Đọc kinh / Niệm Phật</button>
+          <button id="bowStatueBtn">🙏 Lễ tượng gần nhất</button>
+          <button id="questBtn">📜 Nhiệm vụ</button>
+        </div>
+        <div id="toast" class="toast hidden"></div>
+        <div id="dialoguePanel" class="dialogue-panel hidden">
+          <div class="dialogue-card">
+            <h3 id="dlgName">🙏</h3>
+            <p id="dlgRole" class="dlg-role"></p>
+            <p id="dlgStory" class="dlg-story"></p>
+            <div id="dlgQuests" class="dlg-quests"></div>
+            <button id="dlgClose" class="btn-primary">Đóng</button>
+          </div>
+        </div>
+        <div id="quizPanel" class="dialogue-panel hidden">
+          <div class="dialogue-card">
+            <h3>❓ Đố vui bất động sản</h3>
+            <p class="dlg-role"><span id="quizProgress">Chọn một phần để làm</span> • Đúng: <b id="quizScore">0</b> câu • Mỗi câu đúng: +5 công đức, +10 điểm kinh nghiệm • Hoàn thành một phần: +10 công đức</p>
+            <div id="quizSections" class="dlg-quests"></div>
+            <div id="quizGame" class="hidden">
+            <p id="quizQuestion" class="dlg-story"></p>
+            <p id="quizRefNote" class="quiz-ref hidden">📝 Đáp án tham khảo — chờ kiểm tra lại.</p>
+            <div id="quizOptions" class="dlg-quests"></div>
+            <p id="quizFeedback" class="quiz-feedback"></p>
+            </div>
+            <div class="quiz-actions">
+              <button id="quizBack" class="btn-primary hidden">← Chọn phần khác</button>
+              <button id="quizNext" class="btn-primary hidden">Câu tiếp theo →</button>
+              <button id="quizClose" class="btn-primary">Đóng</button>
+            </div>
+            <p class="quiz-footnote">Một số số liệu dự án chỉ mang tính tham khảo — vui lòng kiểm tra lại trước khi mua bán thật.</p>
+          </div>
         </div>
       </section>
 
@@ -81,7 +120,18 @@
             <div>🌸 Hoa <b id="countHoa">0</b></div>
             <div>📿 Niệm Phật <b id="countNiemPhat">0</b></div>
             <div>✨ Lễ Phật <b id="countLePhat">0</b></div>
+            <div>🧍 Phật đứng <b id="countStatueDung">0</b></div>
+            <div>🛏️ Phật nằm <b id="countStatueNam">0</b></div>
+            <div>🤍 Quan Âm <b id="countStatueQuanAm">0</b></div>
+            <div>😄 Di Lặc <b id="countStatueDiLac">0</b></div>
+            <div>🛡️ Hộ Pháp <b id="countStatueHoPhap">0</b></div>
           </div>
+        </section>
+
+        <section class="panel" id="questPanel">
+          <h2>📜 Nhiệm vụ của bạn <span id="meritMini"></span></h2>
+          <p class="quest-hint">Lại gần một NPC có dấu <b class="quest-mark">!</b> vàng rồi bấm <b>E</b> để nhận nhiệm vụ.</p>
+          <ul id="questList" class="quest-list"></ul>
         </section>
 
         <section class="panel">

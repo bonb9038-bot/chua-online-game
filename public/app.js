@@ -14,6 +14,7 @@ const ACTION_LABELS = {
   huong: '🪔 đang thắp hương', le: '🙏 đang lễ Phật', lePhat: '🙏 đang lễ Phật — Phật phát sáng',
   chuong: '🔔 đang gõ chuông', nen: '🕯️ đang thắp nến', hoa: '🌸 đang dâng hoa',
   thien: '🧘 đang ngồi thiền', niemPhat: '📿 đang niệm Phật',
+  leTuong: '🙏 đang lễ tượng Phật',
 };
 const CHANT_LINES = [
   'Nam Mô A Di Đà Phật',
@@ -31,6 +32,1618 @@ const SPOTS = {
   hoa:    { x: -2.5, z: -12.5, r: 4.2, stand: { x: -2.5, z: -10.6 }, rot: Math.PI, label: '🌸 Dâng hoa', verb: 'dâng hoa' },
   thien:  { x: 8,    z: -4,   r: 3.2, stand: { x: 8, z: -4 },    rot: Math.PI, label: '🧘 Ngồi thiền', verb: 'ngồi thiền' },
 };
+// ---- Tượng Phật thêm (id, tên, vị trí, điểm đứng, hướng mặt, lời chúc) ----
+// Quan Âm đặt ở (7.5, 12.5) thay vì (10, 13) vì (10, 13) cách cây bonsai (10, 14) chỉ 1m.
+const STATUES = [
+  { id: 'dung',   label: 'Tượng Phật đứng', x: 8,    z: 16,   r: 1.0, stand: { x: 10.2, z: 16 },   rot: -Math.PI / 2, tag: 'Phật Đứng',  blessing: '🙏 Đức Phật đứng ban phước cho bạn — thân tâm an lạc!' },
+  { id: 'nam',    label: 'Tượng Phật nằm',  x: -19,  z: 1,    r: 2.2, stand: { x: -16.3, z: 1 },    rot: -Math.PI / 2, tag: 'Phật Nằm',   blessing: '🙏 Đức Phật nằm ban phước cho bạn — ngủ ngon, mộng lành!' },
+  { id: 'quanAm', label: 'Tượng Quan Âm',   x: 7.5,  z: 12.5, r: 1.0, stand: { x: 5.3, z: 12.5 },   rot: Math.PI / 2,  tag: 'Quan Âm',    blessing: '🙏 Quan Âm Bồ Tát ban phước cho bạn — từ bi, may mắn!' },
+  { id: 'diLac',  label: 'Tượng Phật Di Lặc', x: -5, z: 17,   r: 1.1, stand: { x: -5, z: 14.8 },    rot: Math.PI,      tag: 'Di Lặc',     blessing: '🙏 Phật Di Lặc ban phước cho bạn — cười vui, tài lộc đầy nhà!' },
+  { id: 'hoPhap', label: 'Tượng Hộ Pháp',   x: -8.5, z: -9.5, r: 1.0, stand: { x: -8.5, z: -7.2 },  rot: Math.PI,      tag: 'Hộ Pháp',   blessing: '🙏 Hộ Pháp ban phước cho bạn — hộ trì bình an!' },
+  { id: 'hoPhap', label: 'Tượng Hộ Pháp',   x: 8.5,  z: -9.5, r: 1.0, stand: { x: 8.5, z: -7.2 },   rot: Math.PI,      tag: 'Hộ Pháp',   blessing: '🙏 Hộ Pháp ban phước cho bạn — hộ trì bình an!' },
+];
+const STATUE_LABEL = {};
+STATUES.forEach((s) => { STATUE_LABEL[s.id] = s.label; });
+// ---- NPC giao nhiệm vụ: đi theo vòng waypoint cố định, vị trí tính từ đồng hồ chung ----
+// (Date.now() nên mọi client thấy cùng một vị trí NPC, không dùng Math.random)
+const NPCS = [
+  { id: 'thayMinh', name: 'Thầy Minh', role: 'Sư thầy', robe: 0xd4a017, skin: 0xf2c89b, hair: 'none',
+    story: 'A Di Đà Phật! Thầy trụ trì chùa An Nhiên. Sân chùa còn nhiều việc thiện cần người chung tay — con có muốn giúp thầy không?',
+    waypoints: [[-4, -4], [4, -4], [4, 2], [-4, 2]], speed: 0.7,
+    quests: [
+      { id: 'thap-huong-3', title: 'Thắp 3 nén hương', desc: 'Thắp 3 nén hương ở lư hương lớn trước chính điện.', type: 'huong', count: 3, merit: 10 },
+      { id: 'niem-phat-10', title: 'Niệm Phật 10 câu', desc: 'Ngồi trước tượng Phật, niệm 10 câu Nam Mô A Di Đà Phật.', type: 'niemPhat', count: 10, merit: 15 },
+    ] },
+  { id: 'coHue', name: 'Cô Huệ', role: 'Sư cô', robe: 0x6d4c41, skin: 0xf2c89b, hair: 'none',
+    story: 'Mô Phật! Cô đang chuẩn bị hoa và chuông cho buổi lễ chiều nay. Con giúp cô một tay nhé?',
+    waypoints: [[0, 6], [6, 6], [6, 12], [0, 12]], speed: 0.7,
+    quests: [
+      { id: 'go-chuong-5', title: 'Gõ chuông 5 lần', desc: 'Gõ chuông lớn 5 lần để tiếng chuông vang khắp sân chùa.', type: 'chuong', count: 5, merit: 10 },
+      { id: 'dang-hoa-2', title: 'Dâng hoa 2 lần', desc: 'Dâng 2 lần hoa sen lên bàn thờ Phật.', type: 'hoa', count: 2, merit: 10 },
+    ] },
+  { id: 'baTu', name: 'Bà Tư', role: 'Bà cụ', robe: 0x4a5d7a, skin: 0xeec39a, hair: 'greybun',
+    story: 'Bà già rồi, ngày nào cũng ra chùa lễ Phật, ngồi thiền cho lòng thanh thản. Cháu trẻ khỏe, làm cùng bà cho vui nhé!',
+    waypoints: [[-16, 2], [-10, 2], [-10, 8], [-16, 8]], speed: 0.5,
+    quests: [
+      { id: 'le-phat-3', title: 'Lễ Phật 3 lần', desc: 'Lễ Phật 3 lần — lễ trước tượng Phật lớn hoặc các tượng trong sân đều được.', type: 'lePhat', count: 3, merit: 10 },
+      { id: 'thien-30', title: 'Ngồi thiền 30 giây', desc: 'Ngồi thiền yên lặng 30 giây ở đệm thiền trong sân.', type: 'thien', count: 30, merit: 15 },
+    ] },
+  { id: 'chiLan', name: 'Chị Lan', role: 'Khách viếng chùa', robe: 0xc25b7a, skin: 0xf2c89b, hair: 'bun',
+    story: 'Em đang tìm mua một căn hộ ở Vinhomes Royal Island để cả nhà về ở gần sông, gần biển. Hôm nay em vào chùa thắp hương cầu cho mua được căn ưng ý, giá tốt!',
+    waypoints: [[-2, 10], [4, 10], [4, 16], [-2, 16]], speed: 0.6,
+    quests: [
+      { id: 'cau-can-ho', title: 'Cầu cho chị Lan mua được căn hộ', desc: 'Thắp 3 nén hương cầu cho chị Lan mua được căn hộ ưng ý ở Vinhomes Royal Island.', type: 'huong', count: 3, merit: 15 },
+    ] },
+  { id: 'anhTuan', name: 'Anh Tuấn', role: 'Khách viếng chùa', robe: 0x3b6ea5, skin: 0xf2c89b, hair: 'short',
+    story: 'Anh đang tìm một lô đất nền đẹp để xây nhà cho bố mẹ dưỡng già. Nghe nói đất Vũ Yên giờ hot lắm, anh vào chùa gõ chuông cầu may đây!',
+    waypoints: [[10, 0], [14, -1], [14, 3], [10, 3]], speed: 0.6,
+    quests: [
+      { id: 'cau-dat-nen', title: 'Cầu may cho anh Tuấn tìm được đất nền', desc: 'Gõ chuông 3 lần cầu may cho anh Tuấn tìm được lô đất nền ưng ý để xây nhà.', type: 'chuong', count: 3, merit: 15 },
+      { id: 'quiz-3', title: 'Trả lời đúng 3 câu đố bất động sản', desc: 'Trả lời đúng 3 câu đố vui bất động sản ở bảng đố vui gần cổng hoặc khi trò chuyện với anh Tuấn.', type: 'quiz', count: 3, merit: 20 },
+    ] },
+];
+const QUESTS_BY_ID = {};
+NPCS.forEach((n) => n.quests.forEach((q) => { QUESTS_BY_ID[q.id] = { ...q, npcId: n.id, npcName: n.name }; }));
+// Công đức + danh hiệu theo tổng công đức
+const TITLES = [
+  { min: 0, title: 'Phật tử mới' },
+  { min: 20, title: 'Thiện tín' },
+  { min: 50, title: 'Hộ pháp' },
+  { min: 100, title: 'Công đức viên mãn' },
+];
+function titleForMerit(m) {
+  let t = TITLES[0].title;
+  for (const row of TITLES) if (m >= row.min) t = row.title;
+  return t;
+}
+
+// ---- Đố vui bất động sản: 12 câu, mỗi câu 4 đáp án ----
+// ref: true = câu dùng số liệu dự án, chỉ mang tính tham khảo (ghi chú trong panel).
+const QUIZ_SECTIONS = [
+  {
+    "id": "mo-dau",
+    "title": "Phần mở đầu — Kiến thức cơ bản",
+    "range": "1–12",
+    "questions": [
+      {
+        "n": 1,
+        "q": "Dự án Vinhomes Royal Island tọa lạc ở đâu?",
+        "options": [
+          "Đảo Cát Bà, Hải Phòng",
+          "Đảo Vũ Yên, Hải Phòng",
+          "Bán đảo Đồ Sơn, Hải Phòng",
+          "Hạ Long, Quảng Ninh"
+        ],
+        "answer": 1,
+        "explain": "Vinhomes Royal Island nằm trên đảo Vũ Yên, thành phố Hải Phòng."
+      },
+      {
+        "n": 2,
+        "q": "Cây cầu nào nối đảo Vũ Yên với trung tâm Hải Phòng?",
+        "options": [
+          "Cầu Bính",
+          "Cầu Hoàng Gia",
+          "Cầu Rào",
+          "Cầu Tân Vũ"
+        ],
+        "answer": 1,
+        "explain": "Cầu Hoàng Gia là cây cầu biểu tượng nối đảo Vũ Yên với trung tâm Hải Phòng."
+      },
+      {
+        "n": 3,
+        "q": "Diện tích đảo Vũ Yên khoảng bao nhiêu?",
+        "options": [
+          "Khoảng 50 ha",
+          "Khoảng 200 ha",
+          "Khoảng 877 ha",
+          "Khoảng 1.500 ha"
+        ],
+        "answer": 2,
+        "explain": "Đảo Vũ Yên rộng khoảng 877 ha — số liệu tham khảo, có thể thay đổi theo quy hoạch.",
+        "ref": true
+      },
+      {
+        "n": 4,
+        "q": "\"Sổ hồng\" là giấy tờ gì?",
+        "options": [
+          "Giấy phép xây dựng",
+          "Hợp đồng đặt cọc mua nhà",
+          "Giấy chứng nhận quyền sở hữu nhà ở và quyền sử dụng đất ở",
+          "Giấy chứng nhận đăng ký kinh doanh"
+        ],
+        "answer": 2,
+        "explain": "Sổ hồng chứng nhận quyền sở hữu nhà ở gắn liền với quyền sử dụng đất ở."
+      },
+      {
+        "n": 5,
+        "q": "Sổ đỏ và sổ hồng khác nhau thế nào?",
+        "options": [
+          "Sổ đỏ chứng nhận quyền sử dụng đất; sổ hồng chứng nhận quyền sở hữu nhà ở và quyền sử dụng đất ở",
+          "Sổ đỏ luôn có giá trị cao hơn sổ hồng",
+          "Sổ hồng chỉ cấp cho chung cư, sổ đỏ chỉ cấp cho đất nông nghiệp",
+          "Hai loại sổ này giống hệt nhau, chỉ khác màu bìa"
+        ],
+        "answer": 0,
+        "explain": "Sổ đỏ ghi nhận quyền sử dụng đất; sổ hồng ghi nhận quyền sở hữu nhà ở gắn liền với đất ở."
+      },
+      {
+        "n": 6,
+        "q": "Khi mua nhà, tiền đặt cọc thường là bao nhiêu?",
+        "options": [
+          "Luôn đúng 50% giá nhà",
+          "Thường 5–10% giá trị, tùy thỏa thuận hai bên",
+          "Cố định 1 triệu đồng",
+          "Không cần đặt cọc khi mua nhà"
+        ],
+        "answer": 1,
+        "explain": "Đặt cọc thường 5–10% giá trị căn nhà, do hai bên thỏa thuận — số liệu tham khảo.",
+        "ref": true
+      },
+      {
+        "n": 7,
+        "q": "Sau khi ký hợp đồng mua bán nhà, bước quan trọng tiếp theo là gì?",
+        "options": [
+          "Sơn lại nhà rồi dọn vào ở ngay",
+          "Công chứng hợp đồng tại văn phòng công chứng",
+          "Đăng tin rao bán lại căn nhà",
+          "Đổi ổ khóa cửa chính"
+        ],
+        "answer": 1,
+        "explain": "Hợp đồng mua bán nhà cần được công chứng để có giá trị pháp lý đầy đủ."
+      },
+      {
+        "n": 8,
+        "q": "Vay ngân hàng mua nhà thường được vay tối đa bao nhiêu?",
+        "options": [
+          "Khoảng 70–80% giá trị tài sản",
+          "Luôn vay được 100% giá nhà",
+          "Chỉ vay được tối đa 30%",
+          "Chỉ vay được tối đa 10%"
+        ],
+        "answer": 0,
+        "explain": "Ngân hàng thường cho vay khoảng 70–80% giá trị tài sản, tùy chính sách từng ngân hàng — số liệu tham khảo.",
+        "ref": true
+      },
+      {
+        "n": 9,
+        "q": "Theo phong thủy, cửa chính của nhà nên tránh điều gì?",
+        "options": [
+          "Có mái che phía trên",
+          "Đối thẳng với cửa sau (khí vào rồi thoát ngay)",
+          "Hướng ra đường lớn",
+          "Trồng cây xanh trước cửa"
+        ],
+        "answer": 1,
+        "explain": "Cửa chính đối thẳng cửa sau bị coi là \"xuyên đường sát\", khí tốt vào nhà rồi thoát ra ngay."
+      },
+      {
+        "n": 10,
+        "q": "Phòng thờ trong nhà nên đặt ở đâu?",
+        "options": [
+          "Cạnh nhà vệ sinh cho tiện",
+          "Nơi cao ráo, yên tĩnh và trang nghiêm",
+          "Dưới gầm cầu thang",
+          "Trong phòng ngủ"
+        ],
+        "answer": 1,
+        "explain": "Phòng thờ nên đặt ở nơi cao ráo, yên tĩnh, trang nghiêm nhất trong nhà."
+      },
+      {
+        "n": 11,
+        "q": "Shophouse là loại hình bất động sản gì?",
+        "options": [
+          "Chung cư cao cấp",
+          "Nhà phố thương mại, vừa ở vừa kinh doanh",
+          "Biệt thự nghỉ dưỡng ven biển",
+          "Đất nông nghiệp"
+        ],
+        "answer": 1,
+        "explain": "Shophouse là nhà phố thương mại ở tầng trệt, vừa để ở vừa kinh doanh buôn bán."
+      },
+      {
+        "n": 12,
+        "q": "Biệt thự khác nhà liền kề ở điểm nào?",
+        "options": [
+          "Liền kề luôn đắt hơn biệt thự",
+          "Biệt thự độc lập, có sân vườn riêng; liền kề xây sát nhau thành dãy",
+          "Biệt thự không được cấp sổ hồng",
+          "Nhà liền kề không được ở, chỉ để kinh doanh"
+        ],
+        "answer": 1,
+        "explain": "Biệt thự là nhà độc lập có sân vườn riêng; nhà liền kề xây sát nhau thành dãy phố."
+      }
+    ]
+  },
+  {
+    "id": "p9",
+    "title": "Phần 9 — Kiến thức chuyên sâu về dự án",
+    "range": "101–115",
+    "questions": [
+      {
+        "n": 101,
+        "q": "Vinhomes Royal Island thuộc địa bàn hành chính nào sau khi Hải Phòng thực hiện sắp xếp đơn vị hành chính năm 2025?",
+        "options": [
+          "Phường Hồng Bàng",
+          "Phường Thủy Nguyên",
+          "Phường Lê Chân",
+          "Phường Ngô Quyền"
+        ],
+        "answer": 1,
+        "explain": "Đảo Vũ Yên nằm trong địa bàn Thủy Nguyên, Hải Phòng."
+      },
+      {
+        "n": 102,
+        "q": "Đặc điểm nào tạo nên tính chất đô thị đảo của Vũ Yên?",
+        "options": [
+          "Được bao quanh bởi hệ thống sông",
+          "Nằm trên đỉnh núi",
+          "Nằm giữa khu công nghiệp",
+          "Nằm sát đường quốc lộ"
+        ],
+        "answer": 0,
+        "explain": "Vũ Yên là đảo, được bao quanh bởi hệ thống sông."
+      },
+      {
+        "n": 103,
+        "q": "Đâu là lợi thế của việc phát triển một khu đô thị đảo?",
+        "options": [
+          "Không gian cảnh quan mặt nước",
+          "Tạo môi trường sống có tính riêng tư",
+          "Phát triển các hoạt động giải trí đường thủy",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Cả ba lợi thế đều đúng: cảnh quan mặt nước, riêng tư và giải trí đường thủy."
+      },
+      {
+        "n": 104,
+        "q": "Tổng diện tích khoảng 877 ha của dự án thể hiện điều gì?",
+        "options": [
+          "Quy mô phát triển đô thị lớn",
+          "Chỉ dành cho biệt thự",
+          "Chỉ dành cho thương mại",
+          "Chỉ dành cho sân golf"
+        ],
+        "answer": 0,
+        "explain": "877 ha cho thấy đây là một đại đô thị quy mô rất lớn."
+      },
+      {
+        "n": 105,
+        "q": "Yếu tố nào giúp Vinhomes Royal Island khác biệt với khu đô thị thông thường?",
+        "options": [
+          "Không gian đảo kết hợp hệ sinh thái tiện ích",
+          "Chỉ có nhà ở thấp tầng",
+          "Chỉ có khu thương mại",
+          "Chỉ có công viên"
+        ],
+        "answer": 0,
+        "explain": "Sự khác biệt là không gian đảo kết hợp hệ sinh thái tiện ích đồng bộ."
+      },
+      {
+        "n": 106,
+        "q": "Khi nghiên cứu quy hoạch tổng thể, đâu là yếu tố cần quan tâm?",
+        "options": [
+          "Cơ cấu sử dụng đất",
+          "Hệ thống giao thông",
+          "Mạng lưới tiện ích",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Nghiên cứu quy hoạch cần xem cả cơ cấu đất, giao thông và tiện ích."
+      },
+      {
+        "n": 107,
+        "q": "Mật độ xây dựng thấp có thể đem lại lợi thế nào?",
+        "options": [
+          "Tăng diện tích không gian mở",
+          "Tăng diện tích cảnh quan",
+          "Cải thiện trải nghiệm sống",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Mật độ thấp giúp tăng không gian mở, cảnh quan và trải nghiệm sống."
+      },
+      {
+        "n": 108,
+        "q": "Vai trò của cảnh quan sông nước trong dự án là gì?",
+        "options": [
+          "Tạo giá trị thẩm mỹ",
+          "Tăng trải nghiệm nghỉ dưỡng",
+          "Hình thành bản sắc đô thị",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Sông nước vừa tạo thẩm mỹ, vừa tăng trải nghiệm nghỉ dưỡng và bản sắc đô thị."
+      },
+      {
+        "n": 109,
+        "q": "Đâu là yếu tố quan trọng khi đánh giá một dự án đô thị đảo?",
+        "options": [
+          "Khả năng kết nối giao thông",
+          "Hệ thống tiện ích",
+          "Năng lực vận hành",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Đánh giá đô thị đảo cần cả kết nối giao thông, tiện ích và năng lực vận hành."
+      },
+      {
+        "n": 110,
+        "q": "Mô hình đô thị tích hợp được hiểu là gì?",
+        "options": [
+          "Chỉ phát triển nhà ở",
+          "Kết hợp nhà ở, thương mại, dịch vụ và tiện ích",
+          "Chỉ phát triển công viên",
+          "Chỉ phát triển khu nghỉ dưỡng"
+        ],
+        "answer": 1,
+        "explain": "Đô thị tích hợp kết hợp nhà ở, thương mại, dịch vụ và tiện ích trong một khu."
+      },
+      {
+        "n": 111,
+        "q": "Tại sao quy hoạch đồng bộ có thể tạo ra giá trị dài hạn?",
+        "options": [
+          "Hạn chế phát triển tự phát",
+          "Tạo môi trường sống thống nhất",
+          "Hỗ trợ hình thành cộng đồng cư dân",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Quy hoạch đồng bộ hạn chế tự phát, tạo môi trường thống nhất và cộng đồng cư dân."
+      },
+      {
+        "n": 112,
+        "q": "Yếu tố nào quyết định khả năng hình thành cộng đồng cư dân chất lượng?",
+        "options": [
+          "Hệ thống tiện ích",
+          "Môi trường sống",
+          "Dịch vụ quản lý",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Cộng đồng chất lượng cần cả tiện ích, môi trường sống và dịch vụ quản lý."
+      },
+      {
+        "n": 113,
+        "q": "Đâu là điểm quan trọng khi nghiên cứu vị trí một căn biệt thự ven sông?",
+        "options": [
+          "Tầm nhìn",
+          "Hướng tiếp cận",
+          "Khoảng cách tới tiện ích",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Biệt thự ven sông cần xem tầm nhìn, hướng tiếp cận và khoảng cách tới tiện ích."
+      },
+      {
+        "n": 114,
+        "q": "Khi khách hàng đánh giá một khu đô thị cao cấp, điều gì thường được quan tâm?",
+        "options": [
+          "Chất lượng sản phẩm",
+          "Không gian sống",
+          "Hệ sinh thái tiện ích",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Khách cao cấp quan tâm cả chất lượng sản phẩm, không gian sống và hệ sinh thái tiện ích."
+      },
+      {
+        "n": 115,
+        "q": "Giá trị thương hiệu Vinhomes có thể hỗ trợ dự án ở khía cạnh nào?",
+        "options": [
+          "Nhận diện thương hiệu",
+          "Khả năng thu hút khách hàng",
+          "Niềm tin vào hệ sinh thái và dịch vụ",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Thương hiệu Vinhomes hỗ trợ cả nhận diện, thu hút khách và niềm tin vào dịch vụ."
+      }
+    ]
+  },
+  {
+    "id": "p10",
+    "title": "Phần 10 — Hạ tầng và kết nối",
+    "range": "116–130",
+    "questions": [
+      {
+        "n": 116,
+        "q": "Cầu Hoàng Gia có vai trò quan trọng nhất đối với Vũ Yên là gì?",
+        "options": [
+          "Tăng cường kết nối đảo với khu vực đô thị Hải Phòng",
+          "Kết nối Hải Phòng với Hà Nội",
+          "Kết nối Hải Phòng với Thái Bình",
+          "Kết nối Hải Phòng với sân bay Nội Bài"
+        ],
+        "answer": 0,
+        "explain": "Cầu Hoàng Gia là tuyến kết nối chính giữa đảo Vũ Yên với đô thị Hải Phòng."
+      },
+      {
+        "n": 117,
+        "q": "Cầu Hoàng Gia chính thức khánh thành vào thời điểm nào?",
+        "options": [
+          "Tháng 1/2024",
+          "Tháng 7/2024",
+          "Tháng 8/2025",
+          "Tháng 1/2026"
+        ],
+        "answer": 2,
+        "explain": "Cầu Hoàng Gia khánh thành tháng 8/2025. Lưu ý: đáp án này chỉ mang tính tham khảo, cần kiểm tra lại.",
+        "ref": true
+      },
+      {
+        "n": 118,
+        "q": "Cầu Máy Chai có ý nghĩa gì đối với kết nối khu vực?",
+        "options": [
+          "Hỗ trợ kết nối khu vực đảo Vũ Yên với mạng lưới giao thông đô thị",
+          "Kết nối trực tiếp với Cát Bà",
+          "Kết nối với Hà Nội",
+          "Kết nối với sân bay Nội Bài"
+        ],
+        "answer": 0,
+        "explain": "Cầu Máy Chai hỗ trợ kết nối đảo Vũ Yên với mạng lưới giao thông đô thị."
+      },
+      {
+        "n": 119,
+        "q": "Khi một cây cầu mới được đưa vào khai thác, lợi ích trực tiếp là gì?",
+        "options": [
+          "Cải thiện khả năng tiếp cận",
+          "Mở rộng lựa chọn tuyến đường",
+          "Hỗ trợ phát triển đô thị hai bên kết nối",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Cầu mới cải thiện tiếp cận, mở thêm tuyến đường và thúc đẩy đô thị hai bên."
+      },
+      {
+        "n": 120,
+        "q": "Sân bay Cát Bi có vai trò gì đối với dự án?",
+        "options": [
+          "Kết nối hàng không nội địa và quốc tế",
+          "Trung tâm thương mại",
+          "Cảng biển quốc tế",
+          "Khu công nghiệp"
+        ],
+        "answer": 0,
+        "explain": "Sân bay Cát Bi kết nối hàng không nội địa và quốc tế cho cư dân và khách."
+      },
+      {
+        "n": 121,
+        "q": "Hệ thống cảng biển Hải Phòng có thể tạo động lực phát triển nào?",
+        "options": [
+          "Thương mại",
+          "Logistics",
+          "Thu hút đầu tư và chuyên gia",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Cảng biển Hải Phòng thúc đẩy thương mại, logistics và thu hút đầu tư, chuyên gia."
+      },
+      {
+        "n": 122,
+        "q": "Khi tư vấn khoảng cách từ Royal Island tới một địa điểm, cách làm nào chính xác nhất?",
+        "options": [
+          "Tự ước lượng",
+          "Lấy khoảng cách đường chim bay làm thời gian di chuyển",
+          "Kiểm tra tuyến đường thực tế và thời gian theo phương tiện",
+          "Cam kết thời gian cố định"
+        ],
+        "answer": 2,
+        "explain": "Tư vấn khoảng cách phải dựa trên tuyến đường thực tế và thời gian theo phương tiện."
+      },
+      {
+        "n": 123,
+        "q": "Kết nối với cao tốc Hà Nội – Hải Phòng có ý nghĩa gì?",
+        "options": [
+          "Hỗ trợ giao thương liên vùng",
+          "Thuận tiện cho khách từ Hà Nội",
+          "Mở rộng khả năng tiếp cận thị trường",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Cao tốc Hà Nội – Hải Phòng hỗ trợ giao thương liên vùng và khách từ Hà Nội."
+      },
+      {
+        "n": 124,
+        "q": "Vị trí gần trung tâm hành chính mới Thủy Nguyên có thể mang lại lợi ích nào?",
+        "options": [
+          "Thu hút nhu cầu nhà ở",
+          "Thu hút chuyên gia và lao động chất lượng cao",
+          "Thúc đẩy dịch vụ đô thị",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Gần trung tâm hành chính mới Thủy Nguyên thu hút nhu cầu ở, chuyên gia và dịch vụ."
+      },
+      {
+        "n": 125,
+        "q": "Yếu tố nào có thể ảnh hưởng đến giá trị bất động sản khi hạ tầng giao thông phát triển?",
+        "options": [
+          "Thời gian di chuyển",
+          "Khả năng kết nối",
+          "Nhu cầu sử dụng và khai thác",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Hạ tầng tốt rút ngắn thời gian di chuyển, tăng kết nối và nhu cầu sử dụng."
+      },
+      {
+        "n": 126,
+        "q": "Đâu là phương tiện phù hợp với lợi thế khai thác bến du thuyền?",
+        "options": [
+          "Du thuyền",
+          "Tàu trải nghiệm đường thủy",
+          "Phương tiện du lịch đường sông phù hợp",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Bến du thuyền khai thác du thuyền, tàu trải nghiệm và du lịch đường sông."
+      },
+      {
+        "n": 127,
+        "q": "Khi hạ tầng kết nối chưa hoàn thành, sale nên làm gì?",
+        "options": [
+          "Cam kết đã hoàn thành",
+          "Phân biệt rõ hạng mục đã hoàn thành, đang thi công và quy hoạch",
+          "Không cần đề cập",
+          "Tự dự đoán thời gian"
+        ],
+        "answer": 1,
+        "explain": "Sale phải phân biệt rõ hạng mục đã xong, đang thi công và quy hoạch — không cam kết bừa."
+      },
+      {
+        "n": 128,
+        "q": "Tại sao khách hàng mua nhà cần quan tâm đến khả năng kết nối?",
+        "options": [
+          "Phục vụ công việc",
+          "Phục vụ học tập",
+          "Phục vụ sinh hoạt và giao thương",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Kết nối tốt phục vụ cả công việc, học tập, sinh hoạt và giao thương."
+      },
+      {
+        "n": 129,
+        "q": "Yếu tố nào phản ánh chất lượng kết nối giao thông của một khu đô thị?",
+        "options": [
+          "Số lượng tuyến đường",
+          "Khả năng kết nối với các trung tâm kinh tế",
+          "Thời gian di chuyển thực tế",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Chất lượng kết nối thể hiện ở số tuyến, kết nối trung tâm kinh tế và thời gian thực tế."
+      },
+      {
+        "n": 130,
+        "q": "Cách tư vấn tốt nhất về lợi thế hạ tầng là gì?",
+        "options": [
+          "Chỉ liệt kê tên các cây cầu",
+          "Phân tích tác động thực tế của từng tuyến kết nối tới nhu cầu sống và đầu tư",
+          "Chỉ nói giá sẽ tăng",
+          "Không cần quan tâm tiến độ"
+        ],
+        "answer": 1,
+        "explain": "Tư vấn hạ tầng tốt là phân tích tác động thực tế tới nhu cầu sống và đầu tư."
+      }
+    ]
+  },
+  {
+    "id": "p11",
+    "title": "Phần 11 — Phân khu và sản phẩm chuyên sâu",
+    "range": "131–140",
+    "questions": [
+      {
+        "n": 131,
+        "q": "Phân khu Golf Land có lợi thế nổi bật nào?",
+        "options": [
+          "Nằm cạnh khu công nghiệp",
+          "Có nhiều sản phẩm hướng tầm nhìn sân golf và hồ cảnh quan",
+          "Chỉ có nhà liền kề",
+          "Không có tiện ích nội khu"
+        ],
+        "answer": 1,
+        "explain": "Golf Land nổi bật với nhiều sản phẩm hướng tầm nhìn sân golf và hồ cảnh quan."
+      },
+      {
+        "n": 132,
+        "q": "Diện tích biệt thự song lập tại Golf Land theo thông tin giới thiệu là khoảng bao nhiêu?",
+        "options": [
+          "90–150 m²",
+          "180–269 m²",
+          "270–419 m²",
+          "450–600 m²"
+        ],
+        "answer": 1,
+        "explain": "Biệt thự song lập tại Golf Land được giới thiệu khoảng 180–269 m² — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 133,
+        "q": "Diện tích biệt thự đơn lập tại Golf Land theo thông tin giới thiệu là khoảng bao nhiêu?",
+        "options": [
+          "90–150 m²",
+          "180–269 m²",
+          "270–419,4 m²",
+          "500–700 m²"
+        ],
+        "answer": 2,
+        "explain": "Biệt thự đơn lập tại Golf Land được giới thiệu khoảng 270–419,4 m² — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 134,
+        "q": "Diện tích shophouse tại Golf Land theo thông tin giới thiệu là khoảng bao nhiêu?",
+        "options": [
+          "50–80 m²",
+          "90–211,2 m²",
+          "250–300 m²",
+          "300–500 m²"
+        ],
+        "answer": 1,
+        "explain": "Shophouse tại Golf Land được giới thiệu khoảng 90–211,2 m² — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 135,
+        "q": "Phân khu Hoàng Gia có vị trí nổi bật tiếp giáp dòng sông nào?",
+        "options": [
+          "Sông Hồng",
+          "Sông Ruột Lợn",
+          "Sông Đà",
+          "Sông Lô"
+        ],
+        "answer": 1,
+        "explain": "Phân khu Hoàng Gia tiếp giáp sông Ruột Lợn."
+      },
+      {
+        "n": 136,
+        "q": "Phân khu Đảo Vua có tiện ích độc quyền nào được giới thiệu trên website dự án?",
+        "options": [
+          "Ngự Hoa Viên",
+          "Hồ cá Koi",
+          "Đồi yến tiệc",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Đảo Vua có cả Ngự Hoa Viên, hồ cá Koi và đồi yến tiệc."
+      },
+      {
+        "n": 137,
+        "q": "Phân khu Hoàng Gia có những loại hình sản phẩm nào?",
+        "options": [
+          "Biệt thự song lập",
+          "Biệt thự đơn lập",
+          "Liền kề và shophouse",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Hoàng Gia có cả biệt thự song lập, đơn lập, liền kề và shophouse."
+      },
+      {
+        "n": 138,
+        "q": "Khu Tài Lộc được định vị nổi bật với đặc điểm nào?",
+        "options": [
+          "Tâm điểm các hoạt động văn hóa, mua sắm, ẩm thực và giải trí",
+          "Chỉ phục vụ nghỉ dưỡng biệt lập",
+          "Chỉ phát triển biệt thự đơn lập",
+          "Khu sản xuất công nghiệp"
+        ],
+        "answer": 0,
+        "explain": "Khu Tài Lộc là tâm điểm văn hóa, mua sắm, ẩm thực và giải trí."
+      },
+      {
+        "n": 139,
+        "q": "Phân khu Miyabi và Komorebi được giới thiệu thuộc nhóm sản phẩm nào?",
+        "options": [
+          "Biệt thự thuộc dự án Royal Island",
+          "Căn hộ chung cư",
+          "Nhà ở xã hội",
+          "Nhà xưởng thương mại"
+        ],
+        "answer": 0,
+        "explain": "Miyabi và Komorebi là dòng biệt thự thuộc Royal Island."
+      },
+      {
+        "n": 140,
+        "q": "Khi lựa chọn căn biệt thự tại Golf Land, khách hàng nên quan tâm điều gì?",
+        "options": [
+          "Tầm nhìn sân golf",
+          "Khoảng cách tới tiện ích",
+          "Diện tích và thiết kế căn nhà",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Chọn biệt thự Golf Land cần xem tầm nhìn golf, khoảng cách tiện ích và diện tích, thiết kế."
+      }
+    ]
+  },
+  {
+    "id": "p12",
+    "title": "Phần 12 — Tiện ích độc bản",
+    "range": "141–150",
+    "questions": [
+      {
+        "n": 141,
+        "q": "Sân golf tại Vinhomes Royal Island có quy mô diện tích được giới thiệu khoảng bao nhiêu?",
+        "options": [
+          "60 ha",
+          "100 ha",
+          "160 ha",
+          "250 ha"
+        ],
+        "answer": 2,
+        "explain": "Sân golf được giới thiệu rộng khoảng 160 ha — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 142,
+        "q": "Sân golf tại dự án được giới thiệu gồm hai phong cách địa hình chính nào?",
+        "options": [
+          "Núi và biển",
+          "Đầm lầy tự nhiên và hồ",
+          "Rừng và sa mạc",
+          "Đồi và đồng bằng"
+        ],
+        "answer": 1,
+        "explain": "Sân golf có hai phong cách địa hình chính là đầm lầy tự nhiên và hồ."
+      },
+      {
+        "n": 143,
+        "q": "Số hố golf được giới thiệu có hệ thống chiếu sáng phục vụ chơi ban đêm là bao nhiêu?",
+        "options": [
+          "9 hố",
+          "18 hố",
+          "27 hố",
+          "36 hố"
+        ],
+        "answer": 2,
+        "explain": "Sân golf có 27 hố được chiếu sáng để chơi ban đêm — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 144,
+        "q": "Clubhouse sân golf được giới thiệu có quy mô khoảng bao nhiêu locker?",
+        "options": [
+          "100 locker",
+          "200 locker",
+          "300 locker",
+          "500 locker"
+        ],
+        "answer": 2,
+        "explain": "Clubhouse sân golf được giới thiệu khoảng 300 locker — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 145,
+        "q": "Bến du thuyền cao cấp của dự án được giới thiệu có quy mô lên tới bao nhiêu?",
+        "options": [
+          "2 ha",
+          "5 ha",
+          "10 ha",
+          "20 ha"
+        ],
+        "answer": 1,
+        "explain": "Bến du thuyền cao cấp được giới thiệu quy mô lên tới 5 ha — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 146,
+        "q": "Tháp Mặt Trời tại quảng trường Royal Square có chiều cao được giới thiệu khoảng bao nhiêu?",
+        "options": [
+          "25 m",
+          "35 m",
+          "45 m",
+          "60 m"
+        ],
+        "answer": 2,
+        "explain": "Tháp Mặt Trời tại quảng trường Royal Square cao khoảng 45 m — số liệu tham khảo, cần kiểm tra lại."
+      },
+      {
+        "n": 147,
+        "q": "Công viên văn hóa Hàn Quốc tại dự án có tên gọi là gì?",
+        "options": [
+          "K-Park",
+          "K-Land",
+          "Seoul Park",
+          "Korea Royal"
+        ],
+        "answer": 0,
+        "explain": "Công viên văn hóa Hàn Quốc có tên K-Park."
+      },
+      {
+        "n": 148,
+        "q": "River Walk được định hướng là loại hình không gian nào?",
+        "options": [
+          "Phố đi bộ ven sông",
+          "Khu công nghiệp",
+          "Trung tâm hành chính",
+          "Khu nhà xưởng"
+        ],
+        "answer": 0,
+        "explain": "River Walk là phố đi bộ ven sông."
+      },
+      {
+        "n": 149,
+        "q": "VinWonders Royal Park có điểm nhấn nào được giới thiệu?",
+        "options": [
+          "Khu vui chơi giải trí gia đình",
+          "Safari thú độc đáo",
+          "Vườn cổ tích và trò chơi trẻ em",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "VinWonders Royal Park có cả khu vui chơi gia đình, safari thú và vườn cổ tích, trò chơi trẻ em."
+      },
+      {
+        "n": 150,
+        "q": "Học viện cưỡi ngựa Vinpearl Horse Academy hướng tới trải nghiệm nào?",
+        "options": [
+          "Đua xe thể thao",
+          "Đào tạo và trải nghiệm bộ môn cưỡi ngựa",
+          "Lặn biển",
+          "Leo núi"
+        ],
+        "answer": 1,
+        "explain": "Vinpearl Horse Academy đào tạo và mang lại trải nghiệm cưỡi ngựa."
+      }
+    ]
+  },
+  {
+    "id": "p13",
+    "title": "Phần 13 — Kiến trúc và không gian sống",
+    "range": "151–160",
+    "questions": [
+      {
+        "n": 151,
+        "q": "Một căn biệt thự có 4 mặt thoáng thường thuộc loại hình nào?",
+        "options": [
+          "Biệt thự đơn lập",
+          "Nhà liền kề",
+          "Shophouse",
+          "Căn hộ chung cư"
+        ],
+        "answer": 0,
+        "explain": "Biệt thự đơn lập có 4 mặt thoáng vì đứng độc lập, không chung tường với căn nào."
+      },
+      {
+        "n": 152,
+        "q": "Điểm khác biệt cơ bản giữa biệt thự song lập và đơn lập là gì?",
+        "options": [
+          "Đơn lập thường có 4 mặt thoáng, song lập thường ghép cặp",
+          "Song lập luôn có 4 mặt thoáng",
+          "Đơn lập luôn có diện tích nhỏ hơn",
+          "Hai loại hình hoàn toàn giống nhau"
+        ],
+        "answer": 0,
+        "explain": "Đơn lập có 4 mặt thoáng, song lập ghép cặp nên chung một phía tường."
+      },
+      {
+        "n": 153,
+        "q": "Yếu tố nào tạo nên giá trị của biệt thự ven sông?",
+        "options": [
+          "Tầm nhìn mặt nước",
+          "Không gian cảnh quan",
+          "Trải nghiệm sống gần thiên nhiên",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Biệt thự ven sông có giá trị nhờ tầm nhìn mặt nước, cảnh quan và trải nghiệm gần thiên nhiên."
+      },
+      {
+        "n": 154,
+        "q": "Tại sao căn biệt thự có tầm nhìn sân golf có thể được khách hàng đánh giá cao?",
+        "options": [
+          "Cảnh quan rộng và thoáng",
+          "Tầm nhìn đặc trưng",
+          "Giá trị trải nghiệm sống",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Tầm nhìn sân golf được đánh giá cao nhờ cảnh quan rộng thoáng, tầm nhìn đặc trưng và trải nghiệm sống."
+      },
+      {
+        "n": 155,
+        "q": "Khi đánh giá hướng nhà, yếu tố nào cần được xem xét?",
+        "options": [
+          "Hướng nắng",
+          "Hướng gió",
+          "Thói quen sinh hoạt của gia đình",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Đánh giá hướng nhà cần xem hướng nắng, hướng gió và thói quen sinh hoạt của gia đình."
+      },
+      {
+        "n": 156,
+        "q": "Nhà liền kề thường có đặc điểm nào?",
+        "options": [
+          "Các căn xây dựng liền nhau theo dãy",
+          "Có 4 mặt thoáng hoàn toàn",
+          "Chỉ được xây dựng trên đảo",
+          "Luôn có sân golf phía sau"
+        ],
+        "answer": 0,
+        "explain": "Nhà liền kề xây liền nhau thành dãy, chung tường hai bên."
+      },
+      {
+        "n": 157,
+        "q": "Không gian sân vườn riêng mang lại lợi ích nào?",
+        "options": [
+          "Tạo không gian thư giãn",
+          "Có thể tổ chức sinh hoạt ngoài trời",
+          "Tăng trải nghiệm riêng tư",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Sân vườn riêng vừa thư giãn, vừa sinh hoạt ngoài trời, vừa tăng riêng tư."
+      },
+      {
+        "n": 158,
+        "q": "Bể bơi bốn mùa mái kính pha lê tại Hoàng Gia có lợi thế nào?",
+        "options": [
+          "Tạo không gian bơi lội có mái che",
+          "Tăng trải nghiệm tiện ích cao cấp",
+          "Tạo điểm nhấn kiến trúc",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Bể bơi bốn mùa mái kính pha lê vừa có mái che, vừa là tiện ích cao cấp và điểm nhấn kiến trúc."
+      },
+      {
+        "n": 159,
+        "q": "Công viên nội khu đóng vai trò gì đối với cư dân?",
+        "options": [
+          "Không gian vận động",
+          "Không gian thư giãn",
+          "Không gian giao lưu cộng đồng",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Công viên nội khu là không gian vận động, thư giãn và giao lưu cộng đồng."
+      },
+      {
+        "n": 160,
+        "q": "Đâu là cách lựa chọn căn nhà phù hợp nhất với nhu cầu gia đình?",
+        "options": [
+          "Chỉ lựa chọn căn đắt nhất",
+          "Cân đối diện tích, ngân sách, vị trí và mục đích sử dụng",
+          "Chỉ lựa chọn căn có mặt tiền lớn",
+          "Chọn theo lời giới thiệu của người khác mà không kiểm tra"
+        ],
+        "answer": 1,
+        "explain": "Chọn nhà phù hợp phải cân đối diện tích, ngân sách, vị trí và mục đích sử dụng."
+      }
+    ]
+  },
+  {
+    "id": "p14",
+    "title": "Phần 14 — Pháp lý và quyền sở hữu",
+    "range": "161–170",
+    "questions": [
+      {
+        "n": 161,
+        "q": "Quy hoạch chi tiết tỷ lệ 1/500 thể hiện nội dung nào?",
+        "options": [
+          "Ranh giới, tổ chức không gian và các chỉ tiêu quy hoạch chi tiết",
+          "Chỉ thể hiện giá bán",
+          "Chỉ thể hiện chính sách ngân hàng",
+          "Chỉ thể hiện nội thất"
+        ],
+        "answer": 0,
+        "explain": "Quy hoạch 1/500 thể hiện ranh giới, tổ chức không gian và các chỉ tiêu quy hoạch chi tiết."
+      },
+      {
+        "n": 162,
+        "q": "Sổ hồng của bất động sản có ý nghĩa gì?",
+        "options": [
+          "Chứng nhận quyền sở hữu nhà ở và quyền sử dụng đất theo quy định",
+          "Chỉ là phiếu đặt cọc",
+          "Chỉ là hợp đồng quảng cáo",
+          "Chỉ là giấy xác nhận thanh toán"
+        ],
+        "answer": 0,
+        "explain": "Sổ hồng chứng nhận quyền sở hữu nhà ở và quyền sử dụng đất theo quy định."
+      },
+      {
+        "n": 163,
+        "q": "Khách hàng muốn kiểm tra pháp lý một căn biệt thự cần xem gì?",
+        "options": [
+          "Hợp đồng mua bán",
+          "Hồ sơ pháp lý liên quan đến quyền sử dụng đất và nhà ở",
+          "Thông tin quy hoạch và nghĩa vụ tài chính liên quan",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Kiểm tra pháp lý cần xem hợp đồng mua bán, hồ sơ quyền sử dụng đất, nhà ở, quy hoạch và nghĩa vụ tài chính."
+      },
+      {
+        "n": 164,
+        "q": "Thời hạn sở hữu của một bất động sản cần căn cứ vào đâu?",
+        "options": [
+          "Lời giới thiệu của sale",
+          "Hồ sơ pháp lý và quy định áp dụng cho sản phẩm",
+          "Giá bán",
+          "Diện tích căn nhà"
+        ],
+        "answer": 1,
+        "explain": "Thời hạn sở hữu căn cứ vào hồ sơ pháp lý và quy định áp dụng cho sản phẩm."
+      },
+      {
+        "n": 165,
+        "q": "Khi khách hàng yêu cầu xem giấy phép xây dựng, sale cần làm gì?",
+        "options": [
+          "Cung cấp tài liệu chính xác theo phạm vi được phép",
+          "Tự tạo tài liệu",
+          "Gửi tài liệu của dự án khác",
+          "Từ chối mọi yêu cầu"
+        ],
+        "answer": 0,
+        "explain": "Sale cung cấp giấy phép xây dựng chính xác trong phạm vi được phép, không tự tạo tài liệu."
+      },
+      {
+        "n": 166,
+        "q": "Hợp đồng mua bán bất động sản có vai trò gì?",
+        "options": [
+          "Xác lập quyền và nghĩa vụ của các bên",
+          "Thể hiện giá và phương thức thanh toán",
+          "Quy định các điều khoản giao dịch",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Hợp đồng mua bán xác lập quyền, nghĩa vụ, giá, phương thức thanh toán và điều khoản giao dịch."
+      },
+      {
+        "n": 167,
+        "q": "Khi chuyển nhượng bất động sản, khách hàng cần kiểm tra điều gì?",
+        "options": [
+          "Điều kiện chuyển nhượng",
+          "Tình trạng thanh toán",
+          "Nghĩa vụ thuế, phí",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Chuyển nhượng cần kiểm tra điều kiện chuyển nhượng, tình trạng thanh toán và nghĩa vụ thuế, phí."
+      },
+      {
+        "n": 168,
+        "q": "Tại sao phải kiểm tra tình trạng thế chấp của bất động sản?",
+        "options": [
+          "Để xác định các ràng buộc liên quan đến tài sản",
+          "Để biết màu sơn căn nhà",
+          "Để xác định số lượng tiện ích",
+          "Để xác định hướng gió"
+        ],
+        "answer": 0,
+        "explain": "Kiểm tra thế chấp để xác định các ràng buộc pháp lý liên quan đến tài sản."
+      },
+      {
+        "n": 169,
+        "q": "Khi có thay đổi về chính sách pháp lý, nhân viên sale nên làm gì?",
+        "options": [
+          "Tiếp tục sử dụng thông tin cũ",
+          "Cập nhật văn bản mới nhất và kiểm tra hiệu lực",
+          "Tự suy luận",
+          "Chỉ nghe thông tin từ khách hàng"
+        ],
+        "answer": 1,
+        "explain": "Có thay đổi chính sách pháp lý thì cập nhật văn bản mới nhất và kiểm tra hiệu lực."
+      },
+      {
+        "n": 170,
+        "q": "Tài liệu nào có giá trị quan trọng nhất khi xác định quyền và nghĩa vụ của người mua?",
+        "options": [
+          "Bài đăng quảng cáo",
+          "Tin nhắn môi giới",
+          "Hợp đồng và hồ sơ pháp lý có liên quan",
+          "Video giới thiệu dự án"
+        ],
+        "answer": 2,
+        "explain": "Quyền và nghĩa vụ của người mua được xác định bằng hợp đồng và hồ sơ pháp lý liên quan."
+      }
+    ]
+  },
+  {
+    "id": "p15",
+    "title": "Phần 15 — Tài chính và chính sách bán hàng",
+    "range": "171–185",
+    "questions": [
+      {
+        "n": 171,
+        "q": "Khi mua bất động sản, tổng giá trị đầu tư cần tính những khoản nào?",
+        "options": [
+          "Giá bán",
+          "Thuế và phí",
+          "Chi phí tài chính và các khoản phát sinh",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Tổng giá trị đầu tư gồm giá bán, thuế, phí, chi phí tài chính và các khoản phát sinh."
+      },
+      {
+        "n": 172,
+        "q": "Chính sách hỗ trợ lãi suất 0% có ý nghĩa gì?",
+        "options": [
+          "Khách hàng không cần thanh toán tiền nhà",
+          "Khách hàng được hỗ trợ lãi vay theo điều kiện và thời hạn quy định",
+          "Khách hàng được miễn toàn bộ thuế",
+          "Khách hàng được tặng căn nhà"
+        ],
+        "answer": 1,
+        "explain": "Hỗ trợ lãi suất 0% nghĩa là khách được hỗ trợ lãi vay theo điều kiện và thời hạn quy định, không phải không trả tiền nhà."
+      },
+      {
+        "n": 173,
+        "q": "Thanh toán sớm thường có thể mang lại lợi ích nào?",
+        "options": [
+          "Được hưởng chiết khấu theo chính sách",
+          "Giảm chi phí lãi vay trong một số trường hợp",
+          "Tối ưu dòng tiền nếu có đủ vốn",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Thanh toán sớm có thể được chiết khấu, giảm lãi vay và tối ưu dòng tiền nếu đủ vốn."
+      },
+      {
+        "n": 174,
+        "q": "Khi tư vấn khách hàng sử dụng đòn bẩy tài chính, cần phân tích điều gì?",
+        "options": [
+          "Thu nhập hàng tháng",
+          "Khả năng trả nợ",
+          "Lãi suất sau thời gian ưu đãi",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Tư vấn đòn bẩy tài chính phải phân tích thu nhập, khả năng trả nợ và lãi suất sau thời gian ưu đãi."
+      },
+      {
+        "n": 175,
+        "q": "Khách hàng sử dụng vốn vay 50% giá trị bất động sản cần quan tâm điều gì nhất?",
+        "options": [
+          "Khả năng trả nợ gốc và lãi",
+          "Màu sắc căn nhà",
+          "Số lượng nhân viên kinh doanh",
+          "Chiều cao cổng chào"
+        ],
+        "answer": 0,
+        "explain": "Vay 50% giá trị nhà thì quan trọng nhất là khả năng trả nợ gốc và lãi."
+      },
+      {
+        "n": 176,
+        "q": "Chiết khấu thanh toán sớm được tính dựa trên yếu tố nào?",
+        "options": [
+          "Chính sách bán hàng áp dụng",
+          "Tiến độ thanh toán",
+          "Giá trị và tỷ lệ thanh toán đủ điều kiện",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Chiết khấu thanh toán sớm dựa trên chính sách, tiến độ thanh toán và giá trị, tỷ lệ đủ điều kiện."
+      },
+      {
+        "n": 177,
+        "q": "Cam kết tiền thuê trong chính sách bán hàng cần được hiểu như thế nào?",
+        "options": [
+          "Là khoản thu nhập vô điều kiện vĩnh viễn",
+          "Là chính sách có điều kiện, thời hạn và phạm vi áp dụng cụ thể",
+          "Là cam kết tăng giá bất động sản",
+          "Là khoản miễn phí quản lý"
+        ],
+        "answer": 1,
+        "explain": "Cam kết tiền thuê là chính sách có điều kiện, thời hạn và phạm vi áp dụng cụ thể, không phải thu nhập vĩnh viễn."
+      },
+      {
+        "n": 178,
+        "q": "Khi so sánh hai phương án thanh toán, sale cần tính toán gì?",
+        "options": [
+          "Số tiền phải trả từng đợt",
+          "Mức chiết khấu",
+          "Chi phí vốn và dòng tiền",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "So sánh phương án thanh toán cần tính số tiền từng đợt, chiết khấu và chi phí vốn, dòng tiền."
+      },
+      {
+        "n": 179,
+        "q": "Giá trị chiết khấu thực tế được xác định như thế nào?",
+        "options": [
+          "Lấy giá bán nhân với tỷ lệ chiết khấu đủ điều kiện",
+          "Lấy giá bán cộng tỷ lệ chiết khấu",
+          "Lấy giá bán trừ tiền đặt cọc",
+          "Lấy giá bán chia cho số tháng"
+        ],
+        "answer": 0,
+        "explain": "Chiết khấu thực tế = giá bán × tỷ lệ chiết khấu đủ điều kiện."
+      },
+      {
+        "n": 180,
+        "q": "Khách hàng có dòng tiền không ổn định nên ưu tiên phương án nào?",
+        "options": [
+          "Vay tối đa",
+          "Thanh toán toàn bộ ngay lập tức",
+          "Phương án có tiến độ thanh toán phù hợp năng lực tài chính",
+          "Chọn căn có giá cao nhất"
+        ],
+        "answer": 2,
+        "explain": "Dòng tiền không ổn định nên chọn phương án có tiến độ thanh toán phù hợp năng lực tài chính."
+      },
+      {
+        "n": 181,
+        "q": "Khi tư vấn chính sách bán hàng, sale cần lưu ý điều gì?",
+        "options": [
+          "Thời hạn áp dụng",
+          "Điều kiện hưởng ưu đãi",
+          "Các khoản không được tính vào ưu đãi",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Tư vấn chính sách bán hàng phải lưu ý thời hạn, điều kiện hưởng ưu đãi và các khoản không được tính."
+      },
+      {
+        "n": 182,
+        "q": "Tỷ suất lợi nhuận cho thuê bất động sản thường được tính bằng công thức nào?",
+        "options": [
+          "Thu nhập cho thuê năm / Tổng vốn đầu tư × 100%",
+          "Giá bán / Tiền đặt cọc",
+          "Thu nhập tháng / Số phòng",
+          "Giá bán × 12"
+        ],
+        "answer": 0,
+        "explain": "Tỷ suất lợi nhuận cho thuê = thu nhập cho thuê năm / tổng vốn đầu tư × 100%."
+      },
+      {
+        "n": 183,
+        "q": "Khi tính lợi nhuận cho thuê thực tế, cần trừ những khoản nào?",
+        "options": [
+          "Chi phí quản lý",
+          "Chi phí bảo trì và sửa chữa",
+          "Thời gian trống phòng và các chi phí liên quan",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Lợi nhuận cho thuê thực tế phải trừ chi phí quản lý, bảo trì, sửa chữa và thời gian trống phòng."
+      },
+      {
+        "n": 184,
+        "q": "Tại sao khách hàng cần xem xét lãi suất sau thời gian ưu đãi?",
+        "options": [
+          "Vì lãi suất có thể thay đổi theo điều khoản vay",
+          "Vì ảnh hưởng đến nghĩa vụ trả nợ",
+          "Vì ảnh hưởng đến hiệu quả đầu tư",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Lãi suất sau ưu đãi có thể thay đổi, ảnh hưởng nghĩa vụ trả nợ và hiệu quả đầu tư."
+      },
+      {
+        "n": 185,
+        "q": "Khi khách hàng hỏi về lợi nhuận đầu tư, sale nên đưa ra thông tin nào?",
+        "options": [
+          "Kịch bản tích cực",
+          "Kịch bản cơ sở",
+          "Kịch bản thận trọng và rủi ro",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Tư vấn lợi nhuận đầu tư nên đưa cả ba kịch bản: tích cực, cơ sở và thận trọng kèm rủi ro."
+      }
+    ]
+  },
+  {
+    "id": "p16",
+    "title": "Phần 16 — Kỹ năng bán hàng thực chiến",
+    "range": "186–200",
+    "questions": [
+      {
+        "n": 186,
+        "q": "Khách hàng nói: \"Tôi chưa hiểu tại sao phải mua Vũ Yên\". Sale nên làm gì?",
+        "options": [
+          "Gửi ngay bảng giá",
+          "Tìm hiểu nhu cầu và phân tích lợi thế phù hợp với khách hàng",
+          "Thúc ép đặt cọc",
+          "Nói rằng dự án sắp hết hàng"
+        ],
+        "answer": 1,
+        "explain": "Khách chưa hiểu vì sao mua Vũ Yên thì tìm hiểu nhu cầu rồi phân tích lợi thế phù hợp với họ."
+      },
+      {
+        "n": 187,
+        "q": "Khách hàng có ngân sách 15 tỷ đồng muốn mua biệt thự. Bước đầu tiên cần làm là gì?",
+        "options": [
+          "Chọn ngay căn đắt nhất",
+          "Xác định nhu cầu, ngân sách thực tế và phương án thanh toán",
+          "Yêu cầu khách vay thêm",
+          "Chỉ giới thiệu căn có hoa hồng cao"
+        ],
+        "answer": 1,
+        "explain": "Ngân sách 15 tỷ thì bước đầu là xác định nhu cầu, ngân sách thực tế và phương án thanh toán."
+      },
+      {
+        "n": 188,
+        "q": "Khách hàng muốn mua nhà để bố mẹ nghỉ dưỡng. Yếu tố nào cần ưu tiên?",
+        "options": [
+          "Không gian yên tĩnh",
+          "Cảnh quan và tiện ích thư giãn",
+          "Khả năng tiếp cận y tế",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Mua nhà cho bố mẹ nghỉ dưỡng thì ưu tiên cả không gian yên tĩnh, cảnh quan, tiện ích thư giãn và tiếp cận y tế."
+      },
+      {
+        "n": 189,
+        "q": "Khách hàng mua bất động sản để cho thuê. Sale nên phân tích điều gì?",
+        "options": [
+          "Nhu cầu thuê",
+          "Giá thuê thực tế",
+          "Chi phí vận hành và khả năng khai thác",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Mua để cho thuê thì phân tích nhu cầu thuê, giá thuê thực tế, chi phí vận hành và khả năng khai thác."
+      },
+      {
+        "n": 190,
+        "q": "Khi khách hàng nói: \"Tôi cần suy nghĩ thêm\", cách xử lý phù hợp là gì?",
+        "options": [
+          "Gọi điện liên tục gây áp lực",
+          "Tìm hiểu vấn đề khách hàng còn băn khoăn và cung cấp thông tin hỗ trợ",
+          "Ngừng chăm sóc ngay",
+          "Tự giảm giá mà không có căn cứ"
+        ],
+        "answer": 1,
+        "explain": "Khách cần suy nghĩ thêm thì tìm hiểu điều họ còn băn khoăn và cung cấp thông tin hỗ trợ, không gây áp lực."
+      },
+      {
+        "n": 191,
+        "q": "Khách hàng so sánh Royal Island với một dự án khác. Sale nên làm gì?",
+        "options": [
+          "Chê bai dự án đối thủ",
+          "So sánh khách quan về vị trí, sản phẩm, tiện ích, giá và pháp lý",
+          "Khẳng định dự án đối thủ không có giá trị",
+          "Tránh mọi câu hỏi"
+        ],
+        "answer": 1,
+        "explain": "So sánh với dự án khác thì so sánh khách quan về vị trí, sản phẩm, tiện ích, giá và pháp lý."
+      },
+      {
+        "n": 192,
+        "q": "Khi khách hàng yêu cầu xem nhà thực tế, sale cần chuẩn bị gì?",
+        "options": [
+          "Lịch tham quan",
+          "Thông tin căn cụ thể",
+          "Hồ sơ và tài liệu giới thiệu",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Dẫn khách xem nhà thực tế cần chuẩn bị lịch tham quan, thông tin căn cụ thể và hồ sơ, tài liệu giới thiệu."
+      },
+      {
+        "n": 193,
+        "q": "Khách hàng muốn xem một căn cụ thể nhưng căn đó đã được giao dịch. Sale nên làm gì?",
+        "options": [
+          "Vẫn quảng cáo căn đó còn hàng",
+          "Thông báo tình trạng chính xác và đề xuất căn thay thế phù hợp",
+          "Không trả lời",
+          "Yêu cầu khách chuyển tiền ngay"
+        ],
+        "answer": 1,
+        "explain": "Căn khách muốn xem đã bán thì thông báo đúng tình trạng và đề xuất căn thay thế phù hợp."
+      },
+      {
+        "n": 194,
+        "q": "Điều gì giúp khách hàng tin tưởng một nhân viên tư vấn?",
+        "options": [
+          "Thông tin minh bạch",
+          "Kiến thức chuyên môn",
+          "Thái độ chuyên nghiệp và trách nhiệm",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Khách tin tưởng sale nhờ thông tin minh bạch, kiến thức chuyên môn và thái độ chuyên nghiệp, trách nhiệm."
+      },
+      {
+        "n": 195,
+        "q": "Khi khách hàng hỏi về một tiện ích chưa hoàn thành, sale nên trả lời thế nào?",
+        "options": [
+          "Nói đã hoàn thành",
+          "Phân biệt rõ tình trạng hiện tại và kế hoạch triển khai",
+          "Cam kết hoàn thành trong tháng",
+          "Không cần cung cấp thông tin"
+        ],
+        "answer": 1,
+        "explain": "Tiện ích chưa hoàn thành thì phân biệt rõ tình trạng hiện tại và kế hoạch triển khai, không nói đã xong."
+      },
+      {
+        "n": 196,
+        "q": "Trong quá trình chăm sóc khách hàng, CRM có vai trò gì?",
+        "options": [
+          "Quản lý thông tin khách hàng",
+          "Theo dõi lịch sử tương tác",
+          "Quản lý cơ hội bán hàng",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "CRM quản lý thông tin khách hàng, theo dõi lịch sử tương tác và quản lý cơ hội bán hàng."
+      },
+      {
+        "n": 197,
+        "q": "Khi khách hàng có nhu cầu đầu tư dài hạn, sale cần tập trung vào điều gì?",
+        "options": [
+          "Quy hoạch và tầm nhìn phát triển",
+          "Giá trị sử dụng",
+          "Khả năng khai thác và thanh khoản",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Đầu tư dài hạn thì tập trung quy hoạch, tầm nhìn phát triển, giá trị sử dụng, khai thác và thanh khoản."
+      },
+      {
+        "n": 198,
+        "q": "Khách hàng hỏi về khả năng thanh khoản của một căn biệt thự. Yếu tố nào cần phân tích?",
+        "options": [
+          "Vị trí",
+          "Mức giá so với thị trường",
+          "Nhu cầu mua bán và đặc điểm sản phẩm",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Thanh khoản biệt thự phụ thuộc vị trí, mức giá so với thị trường, nhu cầu mua bán và đặc điểm sản phẩm."
+      },
+      {
+        "n": 199,
+        "q": "Đâu là sai lầm nghiêm trọng nhất khi tư vấn bất động sản?",
+        "options": [
+          "Chưa thuộc hết tên các phân khu",
+          "Cung cấp thông tin sai lệch hoặc cam kết không có căn cứ",
+          "Chưa biết hết các tuyến đường",
+          "Chưa biết hết các tiện ích"
+        ],
+        "answer": 1,
+        "explain": "Sai lầm nghiêm trọng nhất là cung cấp thông tin sai lệch hoặc cam kết không có căn cứ."
+      },
+      {
+        "n": 200,
+        "q": "Một nhân viên sale chuyên nghiệp cần đạt được điều gì?",
+        "options": [
+          "Hiểu sâu dự án",
+          "Phân tích được tài chính và sản phẩm",
+          "Tư vấn đúng nhu cầu và minh bạch thông tin",
+          "Cả A, B và C"
+        ],
+        "answer": 3,
+        "explain": "Sale chuyên nghiệp phải hiểu sâu dự án, phân tích được tài chính, sản phẩm và tư vấn đúng nhu cầu, minh bạch thông tin."
+      }
+    ]
+  }
+];
+// ---- Đố vui bất động sản: 9 phần, 112 câu (12 câu mở đầu + 100 câu 101–200) ----
+// QUIZ_SECTIONS: [{id, title, range, questions: [{n, q, options, answer, explain, ref?}]}]
+// ref: true = đáp án "tham khảo", chỉ câu 117 (ngày khánh thành Cầu Hoàng Gia).
+// Các câu số liệu dự án (132–134, 141, 143–146) dùng bảng đáp án của Emma —
+// các số liệu này vẫn cần Emma kiểm tra lại trước khi dùng để tư vấn khách thật.
+// Bảng đáp án 131–200 của Emma bị lệch ở 26 câu, đã sửa theo nội dung câu hỏi:
+// 153, 154, 155, 157, 159, 160, 161, 162, 163, 164, 166, 167, 168, 169, 172,
+// 174, 175, 179, 180, 181, 182, 186, 190, 191, 194, 195 (xem quiz100-data.js).
+let quizSection = null, quizIdx = 0, quizAnswered = false, quizScore = 0;
+const quizSectionState = {}; // id -> {correct, total, completed, best}
+function openQuiz() {
+  $('quizPanel').classList.remove('hidden');
+  renderQuizSections();
+}
+function renderQuizSections() {
+  quizSection = null;
+  $('quizSections').classList.remove('hidden');
+  $('quizGame').classList.add('hidden');
+  $('quizBack').classList.add('hidden');
+  $('quizNext').classList.add('hidden');
+  $('quizProgress').textContent = 'Chọn một phần để làm';
+  const box = $('quizSections');
+  box.innerHTML = '';
+  QUIZ_SECTIONS.forEach((s) => {
+    const st = quizSectionState[s.id];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dlg-quest';
+    b.innerHTML = '<b>' + escapeHtml(s.title) + '</b> — Câu ' + s.range + ' • ' + s.questions.length + ' câu'
+      + (st && st.completed ? ' • ✅ Đã xong (đúng nhất: ' + st.best + '/' + st.total + ')' : '');
+    b.onclick = () => startQuizSection(s.id);
+    box.appendChild(b);
+  });
+}
+function startQuizSection(id) {
+  quizSection = QUIZ_SECTIONS.find((s) => s.id === id);
+  if (!quizSection) return;
+  quizIdx = 0;
+  quizScore = 0;
+  $('quizSections').classList.add('hidden');
+  $('quizGame').classList.remove('hidden');
+  $('quizBack').classList.remove('hidden');
+  $('quizNext').onclick = quizNextHandler;
+  showQuizQuestion();
+}
+function showQuizQuestion() {
+  const qq = quizSection.questions[quizIdx];
+  quizAnswered = false;
+  $('quizProgress').textContent = quizSection.title + ' • Câu ' + (quizIdx + 1) + '/' + quizSection.questions.length;
+  $('quizScore').textContent = quizScore;
+  $('quizQuestion').textContent = 'Câu ' + qq.n + '. ' + qq.q;
+  $('quizRefNote').classList.toggle('hidden', !qq.ref);
+  const fb = $('quizFeedback');
+  fb.textContent = '';
+  fb.className = 'quiz-feedback';
+  $('quizNext').textContent = 'Câu tiếp theo →';
+  $('quizNext').classList.add('hidden');
+  const box = $('quizOptions');
+  box.innerHTML = '';
+  qq.options.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dlg-quest';
+    b.innerHTML = '<b>' + 'ABCD'[i] + '.</b> ' + escapeHtml(opt);
+    b.onclick = () => answerQuiz(i, b);
+    box.appendChild(b);
+  });
+}
+function answerQuiz(i, btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const qq = quizSection.questions[quizIdx];
+  const fb = $('quizFeedback');
+  const btns = document.querySelectorAll('#quizOptions .dlg-quest');
+  btns.forEach((b, j) => { b.disabled = true; if (j === qq.answer) b.classList.add('correct'); });
+  const refTag = qq.ref ? ' (đáp án tham khảo — chờ kiểm tra lại)' : '';
+  if (i === qq.answer) {
+    quizScore += 1;
+    myActions.quiz = (myActions.quiz || 0) + 1;
+    merit += 5;
+    xp += 10;
+    updateMeritUI();
+    scheduleProfileSave();
+    btn.classList.add('correct');
+    fb.textContent = '✅ Đúng rồi! +5 công đức, +10 điểm kinh nghiệm. ' + qq.explain + refTag;
+    fb.className = 'quiz-feedback good';
+    checkQuestProgress();
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent = '❌ Chưa đúng. Đáp án đúng: ' + 'ABCD'[qq.answer] + '. ' + qq.explain + refTag;
+    fb.className = 'quiz-feedback bad';
+  }
+  $('quizScore').textContent = quizScore;
+  $('quizNext').classList.remove('hidden');
+  renderQuestPanel();
+}
+function completeQuizSection() {
+  const total = quizSection.questions.length;
+  const perfect = quizScore === total;
+  let bonus = 10;
+  if (perfect) bonus += 10;
+  merit += bonus;
+  updateMeritUI();
+  scheduleProfileSave();
+  const st = quizSectionState[quizSection.id] || { correct: 0, total, completed: false, best: 0 };
+  st.correct = quizScore;
+  st.completed = true;
+  st.best = Math.max(st.best || 0, quizScore);
+  quizSectionState[quizSection.id] = st;
+  $('quizQuestion').textContent = '🎉 Hoàn thành ' + quizSection.title + '! Bạn trả lời đúng ' + quizScore + '/' + total + ' câu.'
+    + (perfect ? ' Làm đúng hết — quá xuất sắc!' : '');
+  $('quizOptions').innerHTML = '';
+  const fb = $('quizFeedback');
+  fb.textContent = '🏆 +' + bonus + ' công đức vì đã hoàn thành phần này' + (perfect ? ' (thưởng thêm 10 vì làm đúng hết)' : '')
+    + '. Danh hiệu hiện tại của bạn: ' + titleForMerit(merit) + '.';
+  fb.className = 'quiz-feedback good';
+  $('quizNext').textContent = '← Chọn phần khác';
+  $('quizNext').classList.remove('hidden');
+  $('quizNext').onclick = renderQuizSections;
+  showToast('🎉 Hoàn thành ' + quizSection.title + ' • +' + bonus + ' công đức!');
+}
+function quizNextHandler() {
+  quizIdx += 1;
+  if (quizIdx >= quizSection.questions.length) {
+    completeQuizSection();
+    return;
+  }
+  showQuizQuestion();
+}
+$('quizNext').onclick = quizNextHandler;
+$('quizBack').onclick = renderQuizSections;
+$('quizClose').onclick = () => $('quizPanel').classList.add('hidden');
 
 let socket = null;
 let myId = null;
@@ -45,6 +1658,23 @@ let chantTimer = null;
 let chantCount = 0;
 let chantLineIdx = 0;
 let lastGlowAt = 0;
+let toastTimer = null;
+
+// ---- Tượng + NPC + nhiệm vụ (tiến độ theo từng người chơi, lưu ở client) ----
+let statueGroups = {}; // statueId -> [{ group, mats, light, glowT, glowActive }] (Hộ Pháp có 2 tượng)
+let npcs = []; // { def, av, questMark, walkPhase, wayLen, totalLen }
+let myActions = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0, thienSec: 0, quiz: 0 };
+let activeQuests = []; // { questId, baseline: {...myActions} }
+let completedQuests = []; // questId đã hoàn thành (để lưu tiến độ, có thể nhận lại)
+let merit = 0;
+let xp = 0; // điểm kinh nghiệm (đố vui BĐS)
+let profileResumed = false; // true khi vào bằng "Chơi tiếp" (đã áp dụng localStorage)
+let profileForceNew = false; // true khi người chơi xác nhận ghi đè tiến độ cũ
+let thienActive = false;
+let nearestStatue = null;
+let nearestNpc = null;
+let nearestQuiz = false;
+let npcTalkTarget = null; // npcId đang đứng gần để mở đối thoại khi bấm E
 
 const $ = (id) => document.getElementById(id);
 const loginScreen = $('loginScreen'), gameScreen = $('gameScreen');
@@ -107,11 +1737,97 @@ $('soundBtn').onclick = () => {
   if (soundOn) playBell();
 };
 
+// ---- Nhạc nền đọc kinh tịnh tâm (Web Audio tổng hợp, không cần file nhạc) ----
+// Drone trầm kiểu tụng "Om" + tiếng mõ nhịp chậm + chuông ngân nhẹ theo nhịp.
+// Chỉ chạy sau khi người chơi bấm "Vào chùa" (đã có tương tác nên trình duyệt cho phát).
+let musicOn = true;
+let musicVolLevel = 0.4;
+let musicGain = null, musicTimer = null;
+let nextMoAt = 0, nextBellAt = 0, bellNoteIdx = 0;
+let musicChantBoost = false; // khi niệm Phật: mõ đánh nhanh hơn, nổi lên trên nền nhạc
+const MUSIC_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+function startMusic() {
+  if (musicTimer) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  musicGain = audioCtx.createGain();
+  musicGain.gain.value = musicOn ? musicVolLevel * 0.3 : 0;
+  musicGain.connect(audioCtx.destination);
+  // Drone trầm: 55Hz + 82.4Hz + 110Hz, âm lượng dao động chậm như hơi thở
+  const droneGain = audioCtx.createGain();
+  droneGain.gain.value = 0.05;
+  droneGain.connect(musicGain);
+  const lfo = audioCtx.createOscillator(), lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.07; lfoGain.gain.value = 0.02;
+  lfo.connect(lfoGain); lfoGain.connect(droneGain.gain);
+  lfo.start();
+  [55, 82.41, 110].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = f;
+    const g = audioCtx.createGain(); g.gain.value = i === 0 ? 0.6 : 0.3;
+    o.connect(g); g.connect(droneGain);
+    o.start();
+  });
+  nextMoAt = audioCtx.currentTime + 1;
+  nextBellAt = audioCtx.currentTime + 3;
+  musicTimer = setInterval(() => {
+    if (!musicOn || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const moStep = musicChantBoost ? 1.4 : 2.8;
+    if (now >= nextMoAt) { playMoTick(now); nextMoAt = now + moStep; }
+    if (now >= nextBellAt) {
+      playMusicBell(MUSIC_NOTES[bellNoteIdx % MUSIC_NOTES.length], now);
+      bellNoteIdx += 1;
+      nextBellAt = now + 8 + Math.random() * 4;
+    }
+  }, 500);
+}
+function playMoTick(when) {
+  if (!audioCtx || !musicGain) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'triangle'; o.frequency.value = 950;
+  g.gain.setValueAtTime(musicChantBoost ? 0.1 : 0.06, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.12);
+  o.connect(g); g.connect(musicGain);
+  o.start(when); o.stop(when + 0.15);
+}
+function playMusicBell(freq, when) {
+  if (!audioCtx || !musicGain) return;
+  [[1, 0.1], [2.76, 0.04], [5.4, 0.015]].forEach(([mult, vol]) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = freq * mult;
+    g.gain.setValueAtTime(vol, when);
+    g.gain.exponentialRampToValueAtTime(0.0005, when + 4);
+    o.connect(g); g.connect(musicGain);
+    o.start(when); o.stop(when + 4.2);
+  });
+}
+function setMusicOn(on) {
+  musicOn = on;
+  $('musicBtn').textContent = on ? '🎵 Nhạc: Bật' : '🔇 Nhạc: Tắt';
+  if (musicGain && audioCtx) musicGain.gain.setTargetAtTime(on ? musicVolLevel * 0.3 : 0, audioCtx.currentTime, 0.3);
+  if (on) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (!musicTimer) startMusic();
+  }
+}
+$('musicBtn').onclick = () => setMusicOn(!musicOn);
+$('musicVol').addEventListener('input', (e) => {
+  musicVolLevel = Number(e.target.value) / 100;
+  if (musicGain && audioCtx) musicGain.gain.setTargetAtTime(musicOn ? musicVolLevel * 0.3 : 0, audioCtx.currentTime, 0.1);
+});
+// Trình duyệt có thể tạm dừng AudioContext: chạm lần đầu sẽ mở lại nhạc
+window.addEventListener('pointerdown', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+});
+
 // ---- Màn hình đăng nhập ----
 const grid = $('avatarGrid');
 AVATARS.forEach((a) => {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'avatar-btn' + (a.emoji === selectedAvatar.emoji ? ' selected' : '');
+  b.dataset.emoji = a.emoji;
   b.innerHTML = a.emoji + '<small>' + a.label + '</small>';
   b.onclick = () => {
     selectedAvatar = a;
@@ -121,20 +1837,197 @@ AVATARS.forEach((a) => {
   grid.appendChild(b);
 });
 
-function join() {
+// ---- Lưu tiến độ người chơi (2 lớp) ----
+// Lớp 1 — localStorage trên máy người chơi (CHÍNH, đáng tin nhất): giữ tiến độ
+// khi quay lại trên cùng thiết bị/trình duyệt, kể cả khi server đã redeploy.
+// Lớp 2 — server lưu players.json (xem server.js + README.md): chỉ giữ tiến độ
+// khi server restart trong cùng một lần deploy; Render Free dùng ổ đĩa tạm
+// (ephemeral) nên khi redeploy có thể mất. Không hứa hẹn lưu đa thiết bị
+// (muốn thế cần database thật, chưa có trong bản này).
+const PROFILE_KEY_PREFIX = 'chua3d-profile-';
+const PROFILE_LAST_KEY = 'chua3d-profile-last';
+const PROFILE_VERSION = 1;
+function profileKey(name) { return PROFILE_KEY_PREFIX + encodeURIComponent(String(name || '').trim()); }
+function loadProfile(name) {
+  try {
+    const raw = localStorage.getItem(profileKey(name));
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || p.version !== PROFILE_VERSION || typeof p.name !== 'string') return null;
+    return p;
+  } catch (e) { return null; }
+}
+function collectProfile() {
+  return {
+    version: PROFILE_VERSION,
+    name: myName,
+    avatar: myAvatar ? myAvatar.emoji : '🙏',
+    merit, xp,
+    myActions: { ...myActions },
+    activeQuests: activeQuests.map((aq) => ({ questId: aq.questId, baseline: { ...aq.baseline } })),
+    completedQuests: [...completedQuests],
+    quiz: {
+      totalCorrect: myActions.quiz || 0,
+      sections: Object.fromEntries(Object.entries(quizSectionState).map(([id, st]) => [id, { ...st }])),
+    },
+    savedAt: new Date().toISOString(),
+  };
+}
+let profileSaveTimer = null;
+function saveProfileNow() {
+  if (!myName) return;
+  try {
+    localStorage.setItem(profileKey(myName), JSON.stringify(collectProfile()));
+    localStorage.setItem(PROFILE_LAST_KEY, myName);
+  } catch (e) { /* bộ nhớ đầy / chế độ ẩn danh: bỏ qua, game vẫn chơi được */ }
+  sendProfileToServer();
+}
+function scheduleProfileSave() {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = setTimeout(saveProfileNow, 1000);
+}
+function sendProfileToServer() {
+  if (!socket || !myName) return;
+  try {
+    socket.emit('profileSave', {
+      name: myName,
+      merit,
+      title: titleForMerit(merit),
+      questsDone: [...completedQuests],
+      quizScore: myActions.quiz || 0,
+    });
+  } catch (e) { /* bỏ qua */ }
+}
+function applyProfile(p) {
+  if (!p) return;
+  merit = Number(p.merit) || 0;
+  xp = Number(p.xp) || 0;
+  if (p.myActions && typeof p.myActions === 'object') {
+    myActions = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0, thienSec: 0, quiz: 0, ...p.myActions };
+  }
+  activeQuests = Array.isArray(p.activeQuests)
+    ? p.activeQuests.filter((aq) => aq && QUESTS_BY_ID[aq.questId]).map((aq) => ({ questId: aq.questId, baseline: { ...myActions, ...(aq.baseline || {}) } }))
+    : [];
+  completedQuests = Array.isArray(p.completedQuests) ? p.completedQuests.filter((id) => QUESTS_BY_ID[id]) : [];
+  if (p.quiz && p.quiz.sections && typeof p.quiz.sections === 'object') {
+    for (const [id, st] of Object.entries(p.quiz.sections)) {
+      if (st && typeof st === 'object') quizSectionState[id] = { correct: 0, total: 0, completed: false, best: 0, ...st };
+    }
+  }
+  updateMeritUI();
+  renderQuestPanel();
+}
+function resetProgress() {
+  merit = 0; xp = 0;
+  myActions = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0, thienSec: 0, quiz: 0 };
+  activeQuests = [];
+  completedQuests = [];
+  for (const k of Object.keys(quizSectionState)) delete quizSectionState[k];
+  updateMeritUI();
+  renderQuestPanel();
+}
+// Áp dụng profile từ server (chỉ khi máy này chưa có localStorage cho tên đó;
+// localStorage luôn là nguồn chính — nếu 2 bên khác nhau thì ưu tiên localStorage).
+// Profile server chỉ có merit/title/questsDone/quizScore nên khôi phục được
+// từng đó: xp = số câu đúng × 10 (khớp cách tính +10 KN/câu đúng trong game).
+function applyServerProfile(sp) {
+  if (!sp || typeof sp !== 'object') return;
+  merit = Math.max(0, Number(sp.merit) || 0);
+  const qs = Math.max(0, Number(sp.quizScore) || 0);
+  myActions.quiz = qs;
+  xp = qs * 10;
+  completedQuests = Array.isArray(sp.questsDone) ? sp.questsDone.filter((id) => QUESTS_BY_ID[id]) : [];
+  updateMeritUI();
+  renderQuestPanel();
+  saveProfileNow();
+}
+// Lưu trước khi rời trang (kể cả khi đóng tab giữa chừng)
+window.addEventListener('beforeunload', () => { if (myName) saveProfileNow(); });
+
+// ---- Màn hình đăng nhập: hiện "Chơi tiếp" nếu tên đã có profile đã lưu ----
+function refreshContinueBox() {
+  const name = $('nameInput').value.trim();
+  const p = name ? loadProfile(name) : null;
+  const box = $('continueBox');
+  if (!p) {
+    box.classList.add('hidden');
+    $('joinBtn').textContent = '🙏 Vào chùa';
+    return;
+  }
+  $('continueText').innerHTML = '👋 Chào mừng quay lại, <b>' + escapeHtml(p.name) + '</b> ' + escapeHtml(p.avatar || '') +
+    ' — 🪷 ' + (p.merit || 0) + ' công đức • ' + escapeHtml(titleForMerit(p.merit || 0)) +
+    ' • ⭐ ' + (p.xp || 0) + ' KN • ' + (p.completedQuests ? p.completedQuests.length : 0) + ' nhiệm vụ đã xong';
+  box.classList.remove('hidden');
+  $('joinBtn').textContent = '🆕 Tạo nhân vật mới';
+}
+function selectAvatarByEmoji(emoji) {
+  const av = AVATARS.find((a) => a.emoji === emoji);
+  if (!av) return;
+  selectedAvatar = av;
+  document.querySelectorAll('.avatar-btn').forEach((el) => el.classList.toggle('selected', el.dataset.emoji === emoji));
+}
+(function initLogin() {
+  let last = null;
+  try { last = localStorage.getItem(PROFILE_LAST_KEY); } catch (e) { /* bỏ qua */ }
+  if (last) {
+    const p = loadProfile(last);
+    if (p) {
+      $('nameInput').value = p.name;
+      selectAvatarByEmoji(p.avatar);
+    }
+  }
+  refreshContinueBox();
+})();
+$('nameInput').addEventListener('input', refreshContinueBox);
+$('continueBtn').onclick = () => join({ resume: true });
+
+function join(options = {}) {
   const name = $('nameInput').value.trim() || 'Phật tử';
   myName = name.slice(0, 20);
   myAvatar = selectedAvatar;
+  profileForceNew = false;
+  if (options.resume) {
+    const p = loadProfile(myName);
+    if (p) {
+      applyProfile(p);
+      profileResumed = true;
+      showToast('👋 Chào mừng quay lại, ' + myName + '! Tiến độ cũ đã được khôi phục.');
+    }
+  } else {
+    const existing = loadProfile(myName);
+    if (existing) {
+      const ok = confirm('Tên "' + myName + '" đã có tiến độ cũ (' + (existing.merit || 0) + ' công đức, ' +
+        (existing.completedQuests ? existing.completedQuests.length : 0) + ' nhiệm vụ đã xong).\n' +
+        'Bấm OK để tạo nhân vật mới và GHI ĐÈ tiến độ cũ.\nBấm Cancel để quay lại và bấm "Chơi tiếp".');
+      if (!ok) return;
+      profileForceNew = true;
+      try { localStorage.removeItem(profileKey(myName)); } catch (e) { /* bỏ qua */ }
+    }
+    resetProgress();
+  }
   loginScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
   $('meLabel').textContent = myAvatar.emoji + ' ' + myName;
+  ensureAudio(); // tạo AudioContext ngay trong lần bấm (tương tác người dùng) để nhạc nền được phép phát
   initThree().then(() => {
+    startMusic();
     socket = io();
     socket.on('connect', () => {
       myId = socket.id;
       socket.emit('join', { name: myName, avatar: myAvatar.emoji });
     });
-    socket.on('joined', (state) => { applyRoomState(state); });
+    socket.on('joined', (state) => {
+      applyRoomState(state);
+      // Server gửi lại profile đã lưu (nếu có). Chỉ dùng khi máy này chưa có
+      // localStorage cho tên đó và người chơi không vừa chọn ghi đè —
+      // localStorage luôn là nguồn chính.
+      if (state && state.savedProfile && !profileResumed && !profileForceNew && !loadProfile(myName)) {
+        applyServerProfile(state.savedProfile);
+        showToast('👋 Đã khôi phục tiến độ từ máy chủ: ' + (state.savedProfile.merit || 0) + ' công đức.');
+      } else {
+        saveProfileNow(); // tạo/cập nhật profile local + gửi lên server (lớp 2)
+      }
+    });
     socket.on('roomState', (state) => applyRoomState(state));
     socket.on('playerMoved', (d) => onPlayerMoved(d));
     socket.on('chatMessage', (msg) => { addChat(msg); showBubble(msg.name, msg.text); });
@@ -147,7 +2040,19 @@ function join() {
       if (data.type === 'niemPhat') setPose(data.id, 'chant');
       if (data.type === 'thien') setPose(data.id, 'sit');
       if (data.type === 'hoa') addFlowers();
+      if (data.type === 'leTuong') {
+        setPose(data.id, 'bow');
+        glowStatue(data.statue, data.name);
+        const st = STATUES.find((s) => s.id === data.statue);
+        if (st) showBubble(data.name, st.blessing);
+      }
       showActionLabel(data.id, data.type);
+      if (data.id === myId) countMyAction(data.type);
+    });
+    socket.on('statueGlow', (data) => glowStatue(data.statue, data.name));
+    socket.on('questDone', (data) => {
+      renderFeed(data.feed || []);
+      if (data.name !== myName) showToast('🎉 ' + data.name + ' đã hoàn thành: ' + data.quest + ' (+' + data.merit + ' công đức)');
     });
     socket.on('buddhaGlow', (data) => triggerBuddhaGlow(data.name));
     socket.on('chantTick', (data) => {
@@ -203,6 +2108,13 @@ function updateCounters(c) {
   $('countHoa').textContent = c.hoa || 0;
   const n = $('countNiemPhat'); if (n) n.textContent = c.niemPhat || 0;
   const l = $('countLePhat'); if (l) l.textContent = c.lePhat || 0;
+  const st = c.statues || {};
+  const setStat = (id, val) => { const el = $('countStatue' + id); if (el) el.textContent = val; };
+  setStat('Dung', st.dung || 0);
+  setStat('Nam', st.nam || 0);
+  setStat('QuanAm', st.quanAm || 0);
+  setStat('DiLac', st.diLac || 0);
+  setStat('HoPhap', st.hoPhap || 0);
 }
 function updateOnline(players) {
   $('onlineCount').textContent = '🟢 ' + players.length + ' người đang online';
@@ -253,6 +2165,7 @@ function chantTick() {
 function startChant() {
   if (!socket || chanting) return;
   ensureAudio();
+  musicChantBoost = true; // mõ/đọc kinh nổi lên trên nền nhạc
   chanting = true;
   chantCount = 0;
   chantLineIdx = 0;
@@ -270,6 +2183,7 @@ function startChant() {
 function stopChant() {
   if (!chanting) return;
   chanting = false;
+  musicChantBoost = false;
   clearInterval(chantTimer);
   if (socket) socket.emit('stopChant');
   setPose(myId, null);
@@ -298,6 +2212,209 @@ document.querySelectorAll('[data-action]').forEach((btn) => {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// ---- Lễ tượng ----
+function walkToPoint(x, z, rot, cb) {
+  const dx = x - myPos.x, dz = z - myPos.z;
+  if (Math.hypot(dx, dz) < 1.4) {
+    myPos.rot = rot;
+    sendMove(true);
+    if (cb) cb();
+    return;
+  }
+  moveTarget = { x, z };
+  pendingAction = { type: 'point', cb, rot };
+}
+function walkToNpc(npc, cb) {
+  const px = npc.av.root.position.x, pz = npc.av.root.position.z;
+  const dx = myPos.x - px, dz = myPos.z - pz;
+  const d = Math.hypot(dx, dz) || 1;
+  const tx = px + (dx / d) * 1.4, tz = pz + (dz / d) * 1.4;
+  const rot = Math.atan2(px - myPos.x, pz - myPos.z);
+  walkToPoint(tx, tz, rot, cb);
+}
+function doStatueBow(statueId) {
+  if (!socket) return;
+  const st = STATUES.find((s) => s.id === statueId);
+  if (!st) return;
+  if (chanting) stopChant();
+  walkToPoint(st.stand.x, st.stand.z, st.rot, () => {
+    socket.emit('action', { type: 'leTuong', statue: statueId });
+    setPose(myId, 'bow');
+  });
+}
+function glowStatue(statueId, byName) {
+  const entries = statueGroups[statueId];
+  if (!entries) return;
+  playDeepBell();
+  for (const entry of entries) {
+    entry.glowActive = true;
+    entry.glowT = 0;
+    entry.light.intensity = 3;
+  }
+  // Cánh sen rơi quanh tượng
+  let i = 0;
+  for (const p of petalPool) {
+    if (p.life > 0) continue;
+    p.life = 4 + Math.random();
+    const st = STATUES.find((s) => s.id === statueId);
+    p.x = (st ? st.x : 0) + (Math.random() - 0.5) * 5;
+    p.y = 6 + Math.random() * 2;
+    p.z = (st ? st.z : 0) + (Math.random() - 0.5) * 5;
+    p.m.visible = true;
+    if (++i >= 12) break;
+  }
+}
+
+// ---- Công đức / danh hiệu / nhiệm vụ ----
+function updateMeritUI() {
+  const t = titleForMerit(merit);
+  const el = $('meritLabel');
+  if (el) el.textContent = '🪷 ' + merit + ' công đức • ' + t + ' • ⭐ ' + xp + ' KN';
+  const mini = $('meritMini');
+  if (mini) mini.textContent = '• 🪷 ' + merit + ' • ' + t + ' • ⭐ ' + xp + ' KN';
+}
+function showToast(text, ms = 5000) {
+  const el = $('toast');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+function questProgress(aq) {
+  const q = QUESTS_BY_ID[aq.questId];
+  if (!q) return 0;
+  return Math.max(0, Math.min(q.count, (myActions[q.type] || 0) - (aq.baseline[q.type] || 0)));
+}
+function renderQuestPanel() {
+  const list = $('questList');
+  if (!list) return;
+  if (!activeQuests.length) {
+    list.innerHTML = '<li class="quest-empty">Chưa có nhiệm vụ nào. Hãy tìm NPC có dấu <b class="quest-mark">!</b> vàng để nhận nhiệm vụ nhé!</li>';
+    return;
+  }
+  list.innerHTML = activeQuests.map((aq) => {
+    const q = QUESTS_BY_ID[aq.questId];
+    const p = questProgress(aq);
+    const unit = q.type === 'thien' ? ' giây' : q.type === 'quiz' ? ' câu' : ' lần';
+    return '<li>📜 <b>' + escapeHtml(q.title) + '</b> (' + escapeHtml(q.npcName) + ')<br>' +
+      'Tiến độ: <b>' + p + '/' + q.count + unit + '</b> • Thưởng: +' + q.merit + ' công đức' +
+      (p >= q.count ? ' <span class="quest-done">— sắp hoàn thành!</span>' : '') + '</li>';
+  }).join('');
+}
+function updateNpcMarks() {
+  for (const npc of npcs) {
+    const hasAvailable = npc.def.quests.some((q) => !activeQuests.some((aq) => aq.questId === q.id));
+    if (npc.questMark) npc.questMark.visible = hasAvailable;
+  }
+}
+function acceptQuest(questId) {
+  const q = QUESTS_BY_ID[questId];
+  if (!q) return;
+  if (activeQuests.some((aq) => aq.questId === questId)) { showToast('Bạn đang làm nhiệm vụ này rồi!'); return; }
+  if (activeQuests.length >= 3) { showToast('Bạn đã nhận tối đa 3 nhiệm vụ. Hoàn thành một nhiệm vụ rồi nhận thêm nhé!'); return; }
+  activeQuests.push({ questId, baseline: { ...myActions } });
+  renderQuestPanel();
+  updateNpcMarks();
+  scheduleProfileSave();
+  showToast('📜 Đã nhận nhiệm vụ: ' + q.title + ' (+' + q.merit + ' công đức khi hoàn thành)');
+  if (npcTalkTarget) openDialogue(npcTalkTarget);
+}
+function checkQuestProgress() {
+  for (const aq of [...activeQuests]) {
+    const q = QUESTS_BY_ID[aq.questId];
+    if (!q) continue;
+    if (questProgress(aq) >= q.count) completeQuest(aq);
+  }
+  renderQuestPanel();
+}
+function completeQuest(aq) {
+  const q = QUESTS_BY_ID[aq.questId];
+  activeQuests = activeQuests.filter((a) => a !== aq);
+  completedQuests.push(q.id);
+  merit += q.merit;
+  updateMeritUI();
+  renderQuestPanel();
+  updateNpcMarks();
+  scheduleProfileSave();
+  // Mưa cánh sen chúc mừng quanh người chơi
+  let i = 0;
+  for (const p of petalPool) {
+    p.life = 5 + Math.random();
+    p.x = myPos.x + (Math.random() - 0.5) * 8;
+    p.y = 7 + Math.random() * 3;
+    p.z = myPos.z + (Math.random() - 0.5) * 8;
+    p.m.visible = true;
+    if (++i >= 24) break;
+  }
+  playDeepBell();
+  const title = titleForMerit(merit);
+  showToast('🎉 Hoàn thành nhiệm vụ: ' + q.title + ' (+' + q.merit + ' công đức)! Danh hiệu của bạn: ' + title, 7000);
+  if (socket) socket.emit('questComplete', { quest: q.title, merit: q.merit, title });
+}
+function countMyAction(type) {
+  if (type === 'leTuong') { myActions.lePhat += 1; scheduleProfileSave(); checkQuestProgress(); return; }
+  if (type === 'thien') { thienActive = true; checkQuestProgress(); return; }
+  if (type in myActions) { myActions[type] += 1; scheduleProfileSave(); checkQuestProgress(); }
+  if (type !== 'thien') thienActive = false;
+}
+setInterval(() => {
+  if (!thienActive) return;
+  myActions.thienSec += 1;
+  scheduleProfileSave();
+  checkQuestProgress();
+}, 1000);
+
+// ---- Đối thoại NPC ----
+function openDialogue(npcId) {
+  const npc = npcs.find((n) => n.def.id === npcId);
+  if (!npc) return;
+  npcTalkTarget = npcId;
+  $('dlgName').textContent = npc.def.name;
+  $('dlgRole').textContent = npc.def.role;
+  $('dlgStory').textContent = npc.def.story;
+  const box = $('dlgQuests');
+  box.innerHTML = '';
+  // Anh Tuấn và chị Lan (khách mua nhà đất) còn rủ chơi đố vui BĐS
+  if (npc.def.id === 'chiLan' || npc.def.id === 'anhTuan') {
+    const qb = document.createElement('button');
+    qb.type = 'button';
+    qb.className = 'dlg-quest';
+    qb.innerHTML = '<b>❓ Chơi đố vui bất động sản</b>12 câu về mua bán nhà đất, Vinhomes Royal Island, sổ hồng, phong thủy — trả lời đúng +5 công đức, +10 điểm kinh nghiệm.';
+    qb.onclick = () => { closeDialogue(); openQuiz(); };
+    box.appendChild(qb);
+  }
+  npc.def.quests.forEach((q) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dlg-quest';
+    const isActive = activeQuests.some((aq) => aq.questId === q.id);
+    const unit = q.type === 'thien' ? 'giây' : q.type === 'quiz' ? 'câu' : 'lần';
+    b.innerHTML = '<b>📜 ' + escapeHtml(q.title) + ' (+' + q.merit + ' công đức)</b>' +
+      escapeHtml(q.desc) + ' (' + q.count + unit + ')' +
+      (isActive ? '<br><i>✅ Đang làm — xem tiến độ ở bảng Nhiệm vụ</i>' : '');
+    b.disabled = isActive || activeQuests.length >= 3;
+    if (!isActive && activeQuests.length >= 3) b.title = 'Đã nhận tối đa 3 nhiệm vụ';
+    b.onclick = () => acceptQuest(q.id);
+    box.appendChild(b);
+  });
+  $('dialoguePanel').classList.remove('hidden');
+}
+function closeDialogue() {
+  $('dialoguePanel').classList.add('hidden');
+  npcTalkTarget = null;
+}
+$('dlgClose').onclick = closeDialogue;
+$('bowStatueBtn').onclick = () => {
+  if (nearestStatue) doStatueBow(nearestStatue.id);
+  else showToast('Hãy lại gần một tượng Phật rồi bấm lại nhé! (Phật đứng, Phật nằm, Quan Âm, Di Lặc, Hộ Pháp)');
+};
+$('questBtn').onclick = () => {
+  const panel = $('questPanel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  showToast('📜 Bảng Nhiệm vụ ở cột bên phải — lại gần NPC có dấu ! vàng để nhận nhiệm vụ.');
+};
 // ================= PHẦN 3D (Three.js) =================
 let THREE = null;
 let renderer, scene, camera, clock;
@@ -325,6 +2442,9 @@ const CIRCLE_COLLIDERS = [
   { x: -2.6, z: 19.5, r: 0.7 }, { x: 2.6, z: 19.5, r: 0.7 }, { x: -6.5, z: 19.5, r: 0.7 }, { x: 6.5, z: 19.5, r: 0.7 }, // trụ cổng
   { x: -9.6, z: -11.3, r: 0.5 }, { x: -7, z: -11.3, r: 0.5 }, { x: -3.5, z: -11.3, r: 0.5 },
   { x: 3.5, z: -11.3, r: 0.5 }, { x: 7, z: -11.3, r: 0.5 }, { x: 9.6, z: -11.3, r: 0.5 }, // cột chính điện
+  { x: 8, z: 16, r: 1.0 }, { x: -19, z: 1, r: 2.2 }, { x: 7.5, z: 12.5, r: 1.0 },
+  { x: -5, z: 17, r: 1.1 }, { x: -8.5, z: -9.5, r: 1.0 }, { x: 8.5, z: -9.5, r: 1.0 }, // tượng Phật thêm
+  { x: -11, z: 17, r: 1.0 }, // bảng đố vui BĐS gần cổng
 ];
 const BOX_COLLIDERS = [
   { minX: -2.4, maxX: 2.4, minZ: -17.6, maxZ: -14.2 }, // bệ tượng Phật
@@ -447,6 +2567,9 @@ async function initThree() {
   buildTreesAndStoneLanterns();
   buildGateAndFence();
   buildSmokeAndPetals();
+  buildStatues();
+  buildNPCs();
+  buildQuizBoard();
 
   // --- Nền cỏ ngoài hàng rào ---
   const grass = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), mat(0x3f6b34, { roughness: 1 }));
@@ -468,6 +2591,8 @@ async function initThree() {
   $('loadingBox').classList.add('hidden');
   threeReady = true;
   initPlayerControls();
+  updateMeritUI();
+  renderQuestPanel();
   animate();
 }
 
@@ -695,6 +2820,263 @@ function buildBuddha() {
   scene.add(buddhaLight);
   buddhaGroup.position.set(0, buddhaBaseY, -16.2);
   scene.add(buddhaGroup);
+}
+
+// ---- Các tượng Phật thêm: Phật đứng, Phật nằm, Quan Âm, Di Lặc, Hộ Pháp ----
+// Mỗi tượng: đài sen + tượng (khối cơ bản Three.js) + bảng tên bay + đèn phát sáng khi lễ.
+function lotusPedestal(g, r = 1.1, gold = 0xd4af37) {
+  const base = cyl(r, r + 0.15, 0.3, 0x8a6d1f, { metalness: 0.6, roughness: 0.4 });
+  base.position.y = 0.15;
+  g.add(base);
+  const n = Math.max(8, Math.round(r * 10));
+  for (let i = 0; i < n; i++) {
+    const p = sph(0.26, gold, { metalness: 0.7, roughness: 0.35 });
+    p.scale.set(1, 0.55, 1.4);
+    const a = (i / n) * Math.PI * 2;
+    p.position.set(Math.sin(a) * r * 0.85, 0.32, Math.cos(a) * r * 0.85);
+    p.rotation.y = a;
+    p.rotation.x = -0.35;
+    g.add(p);
+  }
+}
+function statueLabel(g, text, y) {
+  const tag = makeTextSprite(text, { color: '#ffe9b0' });
+  tag.sp.position.y = y;
+  g.add(tag.sp);
+  return tag.sp;
+}
+function registerStatue(id, g, x, z, tagText, tagY, lightY = 3.2) {
+  g.position.set(x, 0, z);
+  scene.add(g);
+  statueLabel(g, tagText, tagY);
+  const light = new THREE.PointLight(0xffc23d, 0, 12, 1.6);
+  light.position.set(x, lightY, z);
+  scene.add(light);
+  const mats = [];
+  g.traverse((o) => { if (o.isMesh && o.material && o.material.emissive) mats.push({ m: o.material, base: o.material.emissiveIntensity ?? 1 }); });
+  // Hộ Pháp có 2 tượng chung 1 bộ đếm: lưu cả hai để lễ một tượng thì cả hai cùng sáng
+  if (!statueGroups[id]) statueGroups[id] = [];
+  statueGroups[id].push({ group: g, mats, light, glowT: 0, glowActive: false });
+  g.traverse((o) => { o.userData.statue = id; });
+  interactiveRoots.push(g);
+  return g;
+}
+function buildStatues() {
+  const gold = { color: 0xe8b923, metalness: 0.85, roughness: 0.28, emissive: 0x2a1500, emissiveIntensity: 0.4 };
+  const bronze = { color: 0xa8763e, metalness: 0.8, roughness: 0.35, emissive: 0x1a0d00, emissiveIntensity: 0.4 };
+
+  // 1) Tượng Phật đứng — một tay giơ lên ban phước (8, 16), mặt hướng về cổng
+  {
+    const g = new THREE.Group();
+    lotusPedestal(g, 1.0);
+    const robe = cyl(0.42, 0.62, 1.7, 0xe8b923, gold); robe.position.y = 1.35; g.add(robe);
+    const chest = sph(0.5, 0xe8b923, gold); chest.scale.set(1, 1.1, 0.7); chest.position.y = 2.3; g.add(chest);
+    const sash = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 10, 24), mat(0xb8860b, { metalness: 0.7, roughness: 0.35 }));
+    sash.position.y = 2.15; sash.rotation.x = Math.PI / 2 - 0.2; g.add(sash);
+    // Tay phải giơ lên ban phước, lòng bàn tay hướng ra ngoài
+    const armR = cyl(0.11, 0.09, 0.85, 0xe8b923, gold);
+    armR.position.set(0.5, 2.5, 0.15); armR.rotation.z = -0.5; g.add(armR);
+    const palm = box(0.2, 0.3, 0.06, 0xe8b923, gold); palm.position.set(0.72, 3.0, 0.2); g.add(palm);
+    // Tay trái buông xuôi
+    const armL = cyl(0.11, 0.09, 0.85, 0xe8b923, gold);
+    armL.position.set(-0.5, 1.9, 0.1); armL.rotation.z = 0.25; g.add(armL);
+    const head = sph(0.34, 0xe8b923, gold); head.position.y = 3.0; g.add(head);
+    const ushnisha = sph(0.12, 0xe8b923, gold); ushnisha.position.y = 3.32; g.add(ushnisha);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 10, 32),
+      new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.9, metalness: 0.7, roughness: 0.3 }));
+    halo.position.set(0, 3.0, -0.2); g.add(halo);
+    registerStatue('dung', g, 8, 16, 'Phật Đứng', 4.1);
+  }
+
+  // 2) Tượng Phật nằm — nằm dài dưới gốc cây phía Tây (-19, 1), đầu gối tay
+  {
+    const g = new THREE.Group();
+    lotusPedestal(g, 2.0);
+    const pillow = box(0.9, 0.25, 0.7, 0xd4af37, { metalness: 0.5, roughness: 0.4 });
+    pillow.position.set(-1.5, 0.45, 0); g.add(pillow);
+    const head = sph(0.42, 0xe8b923, gold); head.position.set(-1.35, 0.75, 0); g.add(head);
+    const ushnisha = sph(0.14, 0xe8b923, gold); ushnisha.position.set(-1.35, 1.12, 0); g.add(ushnisha);
+    // Thân nằm dài: các khối cầu dẹt nối nhau
+    const body = sph(0.62, 0xe8b923, gold); body.scale.set(2.4, 0.85, 0.9); body.position.set(0.1, 0.75, 0); g.add(body);
+    const hip = sph(0.55, 0xe8b923, gold); hip.scale.set(1.4, 0.8, 0.95); hip.position.set(1.1, 0.72, 0); g.add(hip);
+    const legs = sph(0.42, 0xe8b923, gold); legs.scale.set(1.6, 0.6, 0.7); legs.position.set(1.9, 0.6, 0); g.add(legs);
+    const robeFold = box(3.2, 0.12, 0.5, 0xb8860b, { metalness: 0.6, roughness: 0.4 });
+    robeFold.position.set(0.3, 1.05, 0.25); robeFold.rotation.y = 0.06; g.add(robeFold);
+    const arm = cyl(0.1, 0.09, 1.1, 0xe8b923, gold);
+    arm.position.set(-0.6, 0.65, 0.45); arm.rotation.z = Math.PI / 2 - 0.25; g.add(arm);
+    registerStatue('nam', g, -19, 1, 'Phật Nằm', 2.6);
+    g.rotation.y = Math.PI / 2; // nằm dọc theo trục Z, đầu hướng Bắc
+  }
+
+  // 3) Tượng Quan Âm — áo trắng viền vàng, tay cầm bình cam lộ (7.5, 12.5)
+  {
+    const g = new THREE.Group();
+    lotusPedestal(g, 1.0, 0xffffff);
+    const robe = cyl(0.45, 0.68, 1.8, 0xf5f0e6, { roughness: 0.7 });
+    robe.position.y = 1.4; g.add(robe);
+    const trim = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 10, 24),
+      new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.7, roughness: 0.35 }));
+    trim.position.y = 0.75; trim.rotation.x = Math.PI / 2; g.add(trim);
+    const chest = sph(0.48, 0xf5f0e6, { roughness: 0.7 }); chest.scale.set(1, 1.05, 0.7); chest.position.y = 2.35; g.add(chest);
+    // Khăn choàng đầu trắng
+    const veil = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 16), mat(0xf5f0e6, { roughness: 0.7 }));
+    veil.position.y = 3.0; g.add(veil);
+    const head = sph(0.3, 0xf2c89b, { roughness: 0.7 }); head.position.set(0, 2.95, 0.12); g.add(head);
+    const crown = cyl(0.12, 0.2, 0.18, 0xd4af37, { metalness: 0.8, roughness: 0.3 });
+    crown.position.set(0, 3.3, 0.12); g.add(crown);
+    // Tay cầm bình cam lộ
+    const arm = cyl(0.09, 0.08, 0.7, 0xf5f0e6, { roughness: 0.7 });
+    arm.position.set(0.45, 2.0, 0.25); arm.rotation.z = -0.7; g.add(arm);
+    const vase = cyl(0.14, 0.2, 0.42, 0x2e6b8a, { roughness: 0.4 });
+    vase.position.set(0.62, 1.65, 0.35); g.add(vase);
+    const sprig = cyl(0.02, 0.02, 0.4, 0x2e7d32); sprig.position.set(0.62, 1.95, 0.35); sprig.rotation.z = 0.3; g.add(sprig);
+    const armL = cyl(0.09, 0.08, 0.7, 0xf5f0e6, { roughness: 0.7 });
+    armL.position.set(-0.45, 2.0, 0.15); armL.rotation.z = 0.5; g.add(armL);
+    registerStatue('quanAm', g, 7.5, 12.5, 'Quan Âm', 4.0);
+  }
+
+  // 4) Tượng Phật Di Lặc — bụng to, cười hoan hỷ, bao vải bên cạnh (-5, 17)
+  {
+    const g = new THREE.Group();
+    lotusPedestal(g, 1.1);
+    const belly = sph(0.75, 0xe8b923, gold); belly.scale.set(1, 0.95, 0.85); belly.position.y = 1.15; g.add(belly);
+    const chest = sph(0.6, 0xe8b923, gold); chest.scale.set(1.05, 0.85, 0.8); chest.position.y = 1.95; g.add(chest);
+    // Áo mở phanh bụng: hai vạt áo hai bên
+    [-1, 1].forEach((s) => {
+      const flap = box(0.28, 0.9, 0.1, 0xb8860b, { metalness: 0.6, roughness: 0.4 });
+      flap.position.set(s * 0.55, 1.7, 0.55); flap.rotation.y = s * 0.5; g.add(flap);
+    });
+    const head = sph(0.42, 0xe8b923, gold); head.position.y = 2.6; g.add(head);
+    [-1, 1].forEach((s) => {
+      const ear = sph(0.12, 0xe8b923, gold); ear.scale.set(0.6, 1.8, 0.6); ear.position.set(s * 0.42, 2.55, 0); g.add(ear);
+    });
+    // Nụ cười: miệng cong (nửa vành khuyên)
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 16, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.6 }));
+    smile.position.set(0, 2.55, 0.4); smile.rotation.z = Math.PI; g.add(smile);
+    // Bao vải bên cạnh
+    const sack = sph(0.5, 0x8d5a2b, { roughness: 0.95 }); sack.scale.set(1, 1.1, 0.9); sack.position.set(1.15, 0.85, 0.3); g.add(sack);
+    const sackTop = cyl(0.12, 0.3, 0.35, 0x6d4520, { roughness: 0.95 }); sackTop.position.set(1.15, 1.35, 0.3); g.add(sackTop);
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 8, 16), mat(0xd4af37, { metalness: 0.7, roughness: 0.35 }));
+    tie.position.set(1.15, 1.2, 0.3); tie.rotation.x = Math.PI / 2; g.add(tie);
+    registerStatue('diLac', g, -5, 17, 'Di Lặc', 3.6);
+  }
+
+  // 5) Hai Hộ Pháp — mặt nghiêm, giáp đồng, cầm vũ khí, hai bên lối vào chính điện (±8.5, -9.5)
+  [[-8.5, -1], [8.5, 1]].forEach(([x, side]) => {
+    const g = new THREE.Group();
+    lotusPedestal(g, 1.0, 0xa8763e);
+    // Chân trụ vững
+    [-0.35, 0.35].forEach((dx) => {
+      const leg = cyl(0.14, 0.16, 0.9, 0x5d4037, { roughness: 0.9 });
+      leg.position.set(dx, 0.75, 0); g.add(leg);
+    });
+    const armor = cyl(0.5, 0.62, 1.3, 0xa8763e, bronze); armor.position.y = 1.6; g.add(armor);
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.06, 10, 24), mat(0xd4af37, { metalness: 0.7, roughness: 0.3 }));
+    belt.position.y = 1.25; belt.rotation.x = Math.PI / 2; g.add(belt);
+    const head = sph(0.34, 0xc98f5a, { roughness: 0.7 }); head.position.y = 2.6; g.add(head);
+    // Mũ giáp có sừng + lông mày rậm (mặt nghiêm)
+    const helm = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.5, 12), mat(0x8a6d1f, { metalness: 0.75, roughness: 0.35 }));
+    helm.position.y = 2.95; g.add(helm);
+    [-1, 1].forEach((s) => {
+      const brow = box(0.16, 0.05, 0.05, 0x222222); brow.position.set(s * 0.14, 2.68, 0.32); brow.rotation.z = s * -0.5; g.add(brow);
+      const eye = sph(0.045, 0xffffff, { roughness: 0.4 }); eye.position.set(s * 0.13, 2.6, 0.32); g.add(eye);
+    });
+    // Vũ khí: giáo (bên trái) / chày kim cang (bên phải)
+    if (side < 0) {
+      const spear = cyl(0.05, 0.05, 2.6, 0x6b4a2f, { roughness: 0.7 });
+      spear.position.set(0.75, 1.9, 0.2); g.add(spear);
+      const blade = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 8), mat(0xd7dde3, { metalness: 0.9, roughness: 0.2 }));
+      blade.position.set(0.75, 3.4, 0.2); g.add(blade);
+    } else {
+      const staff = cyl(0.06, 0.06, 2.2, 0x6b4a2f, { roughness: 0.7 });
+      staff.position.set(-0.75, 1.7, 0.2); g.add(staff);
+      const mace = sph(0.2, 0xd4af37, { metalness: 0.8, roughness: 0.3 }); mace.position.set(-0.75, 2.9, 0.2); g.add(mace);
+    }
+    // Tay cầm vũ khí
+    const arm = cyl(0.11, 0.09, 0.7, 0xa8763e, bronze);
+    arm.position.set(side * 0.6, 2.1, 0.15); arm.rotation.z = side * -0.5; g.add(arm);
+    registerStatue('hoPhap', g, x, -9.5, 'Hộ Pháp', 3.9);
+  });
+}
+
+// ---- Bảng đố vui bất động sản gần cổng (-11, 17) ----
+const QUIZ_SPOT = { x: -11, z: 17, r: 3.5, stand: { x: -11, z: 18.6 }, rot: Math.PI };
+function buildQuizBoard() {
+  const g = new THREE.Group();
+  [-1.1, 1.1].forEach((x) => {
+    const post = box(0.22, 2.6, 0.22, 0x6b4a2f);
+    post.position.set(x, 1.3, 0);
+    g.add(post);
+  });
+  const boardTex = canvasTexture((ctx, w, h) => {
+    ctx.fillStyle = '#fff8ec'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#8c2f26'; ctx.lineWidth = 12; ctx.strokeRect(10, 10, w - 20, h - 20);
+    ctx.fillStyle = '#a33d00'; ctx.font = 'bold 64px serif'; ctx.textAlign = 'center';
+    ctx.fillText('❓ ĐỐ VUI', w / 2, 110);
+    ctx.fillText('BẤT ĐỘNG SẢN', w / 2, 190);
+    ctx.fillStyle = '#3a2317'; ctx.font = 'bold 44px system-ui, sans-serif';
+    ctx.fillText('Trả lời đúng +5 công đức', w / 2, 280);
+    ctx.fillText('Bấm vào bảng để chơi!', w / 2, 340);
+  }, 512, 384);
+  const back = box(3.5, 2.65, 0.1, 0x6b4a2f);
+  back.position.set(0, 2.0, 0.05);
+  g.add(back);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.55),
+    new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.8 }));
+  board.position.set(0, 2.0, 0.14);
+  g.add(board);
+  const roof = box(4.0, 0.18, 1.0, 0x7f1d1d);
+  roof.position.set(0, 3.5, 0);
+  g.add(roof);
+  g.position.set(-11, 0, 17);
+  scene.add(g);
+  g.traverse((o) => { o.userData.quiz = 'board'; });
+  interactiveRoots.push(g);
+}
+
+// ---- NPC giao nhiệm vụ ----
+function buildNPCs() {
+  NPCS.forEach((def) => {
+    const avDef = { emoji: '🧑', label: def.name, robe: def.robe, skin: def.skin, hair: def.hair };
+    const av = createAvatar(avDef, def.name, false);
+    av.id = 'npc-' + def.id;
+    // Dấu "!" vàng trên đầu khi còn nhiệm vụ để nhận
+    const mark = makeTextSprite('!', { color: '#ffd700' });
+    mark.sp.scale.set(0.9, 0.45, 1);
+    mark.sp.position.y = 3.0;
+    av.root.add(mark.sp);
+    av.root.traverse((o) => { o.userData.npc = def.id; });
+    interactiveRoots.push(av.root);
+    // Độ dài từng đoạn waypoint để nội suy vị trí theo thời gian
+    const segs = [];
+    let total = 0;
+    for (let i = 0; i < def.waypoints.length; i++) {
+      const a = def.waypoints[i], b = def.waypoints[(i + 1) % def.waypoints.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      segs.push({ a, b, len });
+      total += len;
+    }
+    npcs.push({ def, av, questMark: mark.sp, walkPhase: Math.random() * 6, segs, totalLen: total });
+  });
+  updateNpcMarks();
+}
+// Vị trí NPC tại thời điểm t (giây): nội suy dọc vòng waypoint, mọi client giống nhau
+function npcPosAt(npc, tSec) {
+  const speed = npc.def.speed || 0.7;
+  let d = ((tSec * speed) % npc.totalLen + npc.totalLen) % npc.totalLen;
+  for (const seg of npc.segs) {
+    if (d <= seg.len) {
+      const k = seg.len ? d / seg.len : 0;
+      const x = seg.a[0] + (seg.b[0] - seg.a[0]) * k;
+      const z = seg.a[1] + (seg.b[1] - seg.a[1]) * k;
+      const rot = Math.atan2(seg.b[0] - seg.a[0], seg.b[1] - seg.a[1]);
+      return { x, z, rot };
+    }
+    d -= seg.len;
+  }
+  const last = npc.segs[npc.segs.length - 1];
+  return { x: last.b[0], z: last.b[1], rot: 0 };
 }
 
 // ---- Bàn thờ + đồ lễ ----
@@ -1351,9 +3733,17 @@ function initPlayerControls() {
   window.addEventListener('keydown', (e) => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
     keys[e.key.toLowerCase()] = true;
-    if ((e.key === 'e' || e.key === 'E') && nearestSpot) {
-      const t = promptType;
-      walkToSpot(t, () => doAction(t));
+    if ((e.key === 'e' || e.key === 'E')) {
+      if (nearestNpc) {
+        walkToNpc(nearestNpc, () => openDialogue(nearestNpc.def.id));
+      } else if (nearestStatue) {
+        doStatueBow(nearestStatue.id);
+      } else if (nearestQuiz) {
+        walkToPoint(QUIZ_SPOT.stand.x, QUIZ_SPOT.stand.z, QUIZ_SPOT.rot, () => openQuiz());
+      } else if (nearestSpot) {
+        const t = promptType;
+        walkToSpot(t, () => doAction(t));
+      }
     }
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
       if (chanting) stopChant();
@@ -1373,8 +3763,13 @@ function initPlayerControls() {
     const hits = raycaster.intersectObjects(interactiveRoots, true);
     if (hits.length) {
       let o = hits[0].object;
-      while (o && !o.userData.spot) o = o.parent;
-      if (o) return { spot: o.userData.spot };
+      while (o && !o.userData.spot && !o.userData.statue && !o.userData.npc && !o.userData.quiz) o = o.parent;
+      if (o) {
+        if (o.userData.statue) return { statue: o.userData.statue };
+        if (o.userData.npc) return { npc: o.userData.npc };
+        if (o.userData.quiz) return { quiz: o.userData.quiz };
+        return { spot: o.userData.spot };
+      }
     }
     const g = raycaster.intersectObject(groundPlane);
     if (g.length) return { point: g[0].point };
@@ -1403,6 +3798,13 @@ function initPlayerControls() {
     if (!hit) return;
     if (hit.spot) {
       walkToSpot(hit.spot, () => doAction(hit.spot));
+    } else if (hit.statue) {
+      doStatueBow(hit.statue);
+    } else if (hit.npc) {
+      const npc = npcs.find((n) => n.def.id === hit.npc);
+      if (npc) walkToNpc(npc, () => openDialogue(npc.def.id));
+    } else if (hit.quiz) {
+      walkToPoint(QUIZ_SPOT.stand.x, QUIZ_SPOT.stand.z, QUIZ_SPOT.rot, () => openQuiz());
     } else if (hit.point) {
       const p = resolveCollision(hit.point.x, hit.point.z);
       moveTarget = p;
@@ -1444,12 +3846,15 @@ function initPlayerControls() {
     joy.addEventListener('pointercancel', endJoy);
   }
 
-  // Bấm vào gợi ý làm lễ
+  // Bấm vào gợi ý làm lễ / lễ tượng / nói chuyện NPC / đố vui
   $('promptChip').addEventListener('click', () => {
-    if (promptType) walkToSpot(promptType, () => doAction(promptType));
+    if (nearestNpc) walkToNpc(nearestNpc, () => openDialogue(nearestNpc.def.id));
+    else if (nearestStatue) doStatueBow(nearestStatue.id);
+    else if (nearestQuiz) walkToPoint(QUIZ_SPOT.stand.x, QUIZ_SPOT.stand.z, QUIZ_SPOT.rot, () => openQuiz());
+    else if (promptType) walkToSpot(promptType, () => doAction(promptType));
   });
 
-  // Kiểm tra điểm làm lễ gần nhất mỗi 0.25s
+  // Kiểm tra điểm làm lễ / tượng / NPC gần nhất mỗi 0.25s
   setInterval(() => {
     if (!me) return;
     let best = null, bestD = 1e9;
@@ -1459,8 +3864,33 @@ function initPlayerControls() {
     }
     nearestSpot = best;
     promptType = best;
+    // Tượng gần nhất (trong 3.5m tính từ chân tượng)
+    let bestSt = null, bestStD = 1e9;
+    for (const s of STATUES) {
+      const d = Math.hypot(myPos.x - s.x, myPos.z - s.z) - s.r;
+      if (d < 3.5 && d < bestStD) { bestSt = s; bestStD = d; }
+    }
+    nearestStatue = bestSt;
+    // NPC gần nhất (trong 3.5m)
+    let bestNpc = null, bestNpcD = 1e9;
+    for (const npc of npcs) {
+      const d = Math.hypot(myPos.x - npc.av.root.position.x, myPos.z - npc.av.root.position.z);
+      if (d < 3.5 && d < bestNpcD) { bestNpc = npc; bestNpcD = d; }
+    }
+    nearestNpc = bestNpc;
+    // Bảng đố vui gần cổng
+    nearestQuiz = Math.hypot(myPos.x - QUIZ_SPOT.x, myPos.z - QUIZ_SPOT.z) < QUIZ_SPOT.r + 1;
     const chip = $('promptChip');
-    if (best) {
+    if (bestNpc) {
+      chip.textContent = '💬 Nói chuyện với ' + bestNpc.def.name + ' — bấm E hoặc chạm vào đây';
+      chip.classList.remove('hidden');
+    } else if (bestSt) {
+      chip.textContent = '🙏 Lễ ' + bestSt.label + ' — bấm E hoặc chạm vào đây';
+      chip.classList.remove('hidden');
+    } else if (nearestQuiz) {
+      chip.textContent = '❓ Đố vui bất động sản — bấm E hoặc chạm vào đây';
+      chip.classList.remove('hidden');
+    } else if (best) {
       chip.textContent = SPOTS[best].label + ' — bấm E hoặc chạm vào đây';
       chip.classList.remove('hidden');
     } else {
@@ -1525,6 +3955,7 @@ function animate() {
       const speed = (keys['shift'] ? 8 : 5.5) * dt;
       const np = resolveCollision(myPos.x + mx * speed, myPos.z + mz * speed);
       myPos.x = np.x; myPos.z = np.z;
+      thienActive = false; // rời khỏi chỗ thiền thì dừng tính giờ thiền
       const targetRot = Math.atan2(mx, mz);
       let dr = targetRot - myPos.rot;
       while (dr > Math.PI) dr -= Math.PI * 2;
@@ -1564,6 +3995,25 @@ function animate() {
     while (dr > Math.PI) dr -= Math.PI * 2;
     while (dr < -Math.PI) dr += Math.PI * 2;
     av.root.rotation.y += dr * Math.min(1, dt * 8);
+  }
+
+  // --- NPC đi lại theo vòng waypoint (vị trí tính từ đồng hồ chung) ---
+  for (const npc of npcs) {
+    const pos = npcPosAt(npc, Date.now() / 1000);
+    const prevX = npc.av.root.position.x, prevZ = npc.av.root.position.z;
+    npc.av.root.position.set(pos.x, 0, pos.z);
+    npc.av.root.rotation.y = pos.rot;
+    const moved = Math.hypot(pos.x - prevX, pos.z - prevZ) > 0.0005;
+    if (moved) {
+      npc.walkPhase += dt * 6;
+      npc.av.body.position.y = Math.abs(Math.sin(npc.walkPhase)) * 0.06;
+      npc.av.armL.rotation.x = Math.sin(npc.walkPhase) * 0.6;
+      npc.av.armR.rotation.x = -Math.sin(npc.walkPhase) * 0.6;
+    } else {
+      npc.av.body.position.y *= 0.9;
+      npc.av.armL.rotation.x *= 0.9;
+      npc.av.armR.rotation.x *= 0.9;
+    }
   }
 
   // --- Hoạt ảnh đi bộ / ngồi / lễ ---
@@ -1614,6 +4064,24 @@ function animate() {
       buddhaLight.intensity = 0;
       if (buddhaMats) for (const m of buddhaMats) m.emissiveIntensity = 0.4;
       $('glowBanner').classList.add('hidden');
+    }
+  }
+
+  // --- Tượng lễ phát sáng (vàng, 4 giây rồi tắt dần) ---
+  for (const entries of Object.values(statueGroups)) {
+    for (const entry of entries) {
+      if (!entry.glowActive) continue;
+      entry.glowT += dt;
+      const k = entry.glowT < 1 ? entry.glowT : entry.glowT > 3 ? Math.max(0, 4 - entry.glowT) : 1;
+      entry.light.intensity = 3 * k;
+      entry.group.scale.setScalar(1 + 0.05 * k);
+      for (const e of entry.mats) e.m.emissiveIntensity = e.base + 1.6 * k;
+      if (entry.glowT >= 4) {
+        entry.glowActive = false;
+        entry.light.intensity = 0;
+        entry.group.scale.setScalar(1);
+        for (const e of entry.mats) e.m.emissiveIntensity = e.base;
+      }
     }
   }
 

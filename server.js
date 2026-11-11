@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 
@@ -17,8 +18,38 @@ const BOUNDS = { minX: -26, maxX: 26, minZ: -20, maxZ: 20 };
 const players = {};
 const chatMessages = []; // keep last 50: { name, avatar, text, time }
 const activityFeed = []; // keep last 30: { text, time }
-const counters = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0 };
+const counters = { huong: 0, chuong: 0, nen: 0, hoa: 0, niemPhat: 0, lePhat: 0, statues: { dung: 0, nam: 0, quanAm: 0, diLac: 0, hoPhap: 0 } };
+const STATUE_IDS = ['dung', 'nam', 'quanAm', 'diLac', 'hoPhap'];
+const STATUE_LABELS = { dung: 'Tượng Phật đứng', nam: 'Tượng Phật nằm', quanAm: 'Tượng Quan Âm', diLac: 'Tượng Phật Di Lặc', hoPhap: 'Tượng Hộ Pháp' };
 const chantTimers = {}; // socketId -> timeout, clears a chanting label after 10s without a tick
+
+// ---- Lưu tiến độ người chơi lên đĩa (LỚP 2, hỗ trợ thêm) ----
+// File players.json (theo tên): { name, merit, title, questsDone, quizScore, updatedAt }.
+// Chỉ giúp giữ tiến độ khi server restart trong CÙNG MỘT LẦN DEPLOY.
+// Render Free dùng ổ đĩa tạm (ephemeral) nên khi redeploy có thể mất — lớp
+// localStorage trên máy người chơi mới là chỗ giữ tiến độ chắc chắn khi quay
+// lại trên cùng thiết bị/trình duyệt (xem README.md). Không lưu đa thiết bị
+// (muốn thế cần database thật, chưa có trong bản này).
+// Server chỉ LƯU theo tên, không dùng làm trạng thái tin cậy cho game logic.
+const PLAYERS_FILE = path.join(__dirname, 'players.json');
+let savedPlayers = {};
+try {
+  const raw = fs.readFileSync(PLAYERS_FILE, 'utf8');
+  const parsed = JSON.parse(raw);
+  if (parsed && typeof parsed === 'object') savedPlayers = parsed;
+} catch (e) { savedPlayers = {}; }
+let playersSaveTimer = null;
+function schedulePlayersSave() {
+  if (playersSaveTimer) return;
+  playersSaveTimer = setTimeout(() => {
+    playersSaveTimer = null;
+    try {
+      const tmp = PLAYERS_FILE + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(savedPlayers, null, 2));
+      fs.renameSync(tmp, PLAYERS_FILE); // ghi file tạm rồi đổi tên để tránh file dở
+    } catch (e) { console.error('Không lưu được players.json:', e.message); }
+  }, 2000);
+}
 
 function nowTime() {
   return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -44,7 +75,7 @@ function clampPos(x, z) {
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/health', (req, res) => res.json({ ok: true, online: Object.keys(players).length, counters }));
+app.get('/health', (req, res) => res.json({ ok: true, online: Object.keys(players).length, counters, savedPlayers: Object.keys(savedPlayers).length }));
 
 io.on('connection', (socket) => {
   // Heartbeat: client pings every 20s, server answers; also keeps free hosts awake-ish
@@ -65,9 +96,27 @@ io.on('connection', (socket) => {
       actionAt: null,
     };
     pushFeed(`🙏 ${cleanName} đã vào chùa`);
-    // Full room state to the newcomer, then tell everyone else
-    socket.emit('joined', roomState());
+    // Full room state to the newcomer, then tell everyone else.
+    // Kèm profile đã lưu trên server (nếu có) để client đối chiếu — nhưng
+    // localStorage trên máy người chơi vẫn là nguồn chính.
+    socket.emit('joined', { ...roomState(), savedProfile: savedPlayers[cleanName] || null });
     socket.broadcast.emit('roomState', roomState());
+  });
+
+  // Lưu tiến độ người chơi lên đĩa (client gửi khi vào chùa / khi tiến độ đổi).
+  // Server chỉ lưu theo tên, không dùng làm trạng thái tin cậy cho game logic.
+  socket.on('profileSave', ({ name, merit, title, questsDone, quizScore } = {}) => {
+    const cleanName = String(name || '').trim().slice(0, 20);
+    if (!cleanName) return;
+    savedPlayers[cleanName] = {
+      name: cleanName,
+      merit: Math.max(0, Math.min(100000, Number(merit) || 0)),
+      title: String(title || '').trim().slice(0, 40),
+      questsDone: Array.isArray(questsDone) ? questsDone.map((q) => String(q).slice(0, 40)).slice(0, 100) : [],
+      quizScore: Math.max(0, Math.min(10000, Number(quizScore) || 0)),
+      updatedAt: new Date().toISOString(),
+    };
+    schedulePlayersSave();
   });
 
   // Đồng bộ di chuyển 3D: x/z (mét), rot (góc quay quanh trục Y, radian)
@@ -82,11 +131,22 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('playerMoved', { id: p.id, x: p.x, z: p.z, rot: p.rot });
   });
 
-  socket.on('action', ({ type, count, phrase } = {}) => {
+  socket.on('action', ({ type, count, phrase, statue } = {}) => {
     const p = players[socket.id];
     if (!p) return;
-    const valid = ['huong', 'le', 'lePhat', 'chuong', 'nen', 'hoa', 'thien', 'niemPhat'];
+    const valid = ['huong', 'le', 'lePhat', 'chuong', 'nen', 'hoa', 'thien', 'niemPhat', 'leTuong'];
     if (!valid.includes(type)) return;
+
+    // --- Lễ tượng (tượng Phật đứng/nằm, Quan Âm, Di Lặc, Hộ Pháp) ---
+    if (type === 'leTuong') {
+      const sid = String(statue || '');
+      if (!STATUE_IDS.includes(sid)) return;
+      counters.statues[sid] += 1;
+      pushFeed(`🙏 ${p.name} đã lễ ${STATUE_LABELS[sid]}`);
+      io.emit('actionDone', { id: p.id, name: p.name, avatar: p.avatar, type, statue: sid, counters: { ...counters }, feed: activityFeed });
+      io.emit('statueGlow', { statue: sid, name: p.name, at: Date.now() });
+      return;
+    }
 
     // --- Niệm Phật: mỗi câu kinh là 1 lần niệm, client gửi nhịp ~2,8s/câu ---
     if (type === 'niemPhat') {
@@ -156,6 +216,19 @@ io.on('connection', (socket) => {
       pushFeed(`📿 ${p.name} đã dừng niệm Phật`);
       io.emit('chantStopped', { id: p.id, name: p.name, counters: { ...counters }, feed: activityFeed });
     }
+  });
+
+  // Hoàn thành nhiệm vụ: server không giữ trạng thái quest, chỉ kiểm tra
+  // và loan báo cho cả phòng (tiến độ từng người tự theo dõi ở client)
+  socket.on('questComplete', ({ quest, merit, title } = {}) => {
+    const p = players[socket.id];
+    if (!p) return;
+    const cleanQuest = String(quest || '').trim().slice(0, 120);
+    if (!cleanQuest) return;
+    const cleanMerit = Math.max(1, Math.min(50, Number(merit) || 0));
+    const cleanTitle = String(title || '').trim().slice(0, 40);
+    pushFeed(`🎉 ${p.name} đã hoàn thành nhiệm vụ ${cleanQuest} (+${cleanMerit} công đức)`);
+    io.emit('questDone', { name: p.name, quest: cleanQuest, merit: cleanMerit, title: cleanTitle, feed: activityFeed });
   });
 
   socket.on('chat', ({ text } = {}) => {
