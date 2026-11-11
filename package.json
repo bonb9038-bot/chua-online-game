@@ -1,0 +1,1 @@
+{"dependencies":{"express":"^4.19.2","socket.io":"^4.7.5"},"description":"Game đi chùa online — phòng chung, mọi người cùng thắp hương và chat theo thời gian thực","engines":{"node":">=18"},"main":"server.js","name":"chua-online-game","scripts":{"start":"node server.js"},"version":"1.0.0"}

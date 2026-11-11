@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chùa Online — Phòng Chung Thắp Hương</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- MÀN HÌNH ĐĂNG NHẬP -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-temple">🛕</div>
+      <h1>Chùa Online</h1>
+      <p class="subtitle">Phòng chung — cùng thắp hương, lễ Phật và trò chuyện như thật</p>
+      <label for="nameInput">Tên của bạn</label>
+      <input id="nameInput" type="text" maxlength="20" placeholder="Ví dụ: Emma, An, Bình..." autocomplete="off">
+      <p class="label">Chọn nhân vật của bạn</p>
+      <div id="avatarGrid" class="avatar-grid"></div>
+      <button id="joinBtn" class="btn-primary">🙏 Vào chùa</button>
+      <p class="hint">Mọi người vào cùng một phòng sẽ thấy nhau đi lại, thắp hương và chat theo thời gian thực.</p>
+    </div>
+  </div>
+
+  <!-- PHÒNG CHÙA -->
+  <div id="gameScreen" class="game-screen hidden">
+    <header class="topbar">
+      <div class="brand">🛕 <strong>Chùa Online</strong> <span class="room-tag">Phòng chung</span></div>
+      <div class="top-right">
+        <span id="onlineCount" class="online-count">🟢 0 người đang online</span>
+        <span id="meLabel" class="me-label"></span>
+        <button id="soundBtn" class="btn-small" title="Bật / tắt tiếng chuông và tiếng tụng">🔊 Âm thanh: Bật</button>
+        <button id="leaveBtn" class="btn-small">Rời chùa</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- Sân chùa 2D -->
+      <section class="courtyard-wrap">
+        <div id="courtyard" class="courtyard" title="Chạm vào sân để đi tới đó">
+          <div class="sky"></div>
+          <div class="sun">🌇</div>
+          <div class="wall-logo" title="NOVASKY — Niềm vui sum vầy"><img src="logo-novasky.png" alt="NOVASKY — Niềm vui sum vầy"></div>
+          <div class="temple" id="temple">
+            <div class="rays" id="buddhaRays"></div>
+            <div class="roof">⛩️</div>
+            <div class="buddha" id="buddha">🧘</div>
+            <div class="buddha-label">Đức Phật</div>
+          </div>
+          <div id="glowBanner" class="glow-banner hidden">✨ Đức Phật phát sáng ✨</div>
+          <div id="lotusLayer" class="lotus-layer"></div>
+          <div id="chantPanel" class="chant-panel hidden">
+            <div class="chant-beads" id="chantBeads"></div>
+            <div class="chant-phrase" id="chantPhrase">Nam Mô A Di Đà Phật</div>
+            <div class="chant-count">Đã niệm: <b id="chantCount">0</b> lần</div>
+            <button id="stopChantBtn" class="btn-small">⏹ Dừng niệm</button>
+          </div>
+          <div class="lantern left">🏮</div>
+          <div class="lantern right">🏮</div>
+
+          <button class="spot altar" data-action="lePhat" data-x="50" data-y="38" title="Bàn thờ Phật — bấm để lễ Phật, Phật sẽ phát sáng">🙏<span>Lễ Phật</span></button>
+          <button class="spot burner" data-action="huong" data-x="50" data-y="56" title="Lư hương — bấm để thắp hương">🪔<span>Lư hương</span></button>
+          <button class="spot bell" data-action="chuong" data-x="18" data-y="50" title="Chuông — bấm để gõ chuông">🔔<span>Gõ chuông</span></button>
+          <button class="spot candle" data-action="nen" data-x="82" data-y="50" title="Nến — bấm để thắp nến">🕯️<span>Thắp nến</span></button>
+          <button class="spot flower" data-action="hoa" data-x="30" data-y="72" title="Hoa — bấm để dâng hoa">🌸<span>Dâng hoa</span></button>
+          <button class="spot cushion" data-action="thien" data-x="70" data-y="72" title="Đệm thiền — bấm để ngồi thiền">🧘<span>Ngồi thiền</span></button>
+
+          <div id="smokeLayer" class="smoke-layer"></div>
+          <div id="playersLayer" class="players-layer"></div>
+          <p class="courtyard-hint">👆 Chạm vào sân để đi lại &nbsp;•&nbsp; Bấm vào lư hương, chuông, nến, hoa để làm lễ &nbsp;•&nbsp; Lễ Phật làm Phật phát sáng cho cả phòng</p>
+        </div>
+
+        <div class="action-bar">
+          <button data-action="huong">🪔 Thắp hương</button>
+          <button data-action="lePhat">🙏 Lễ Phật</button>
+          <button data-action="chuong">🔔 Gõ chuông</button>
+          <button data-action="nen">🕯️ Thắp nến</button>
+          <button data-action="hoa">🌸 Dâng hoa</button>
+          <button data-action="thien">🧘 Ngồi thiền</button>
+          <button id="chantBtn" class="chant-btn">📿 Đọc kinh / Niệm Phật</button>
+        </div>
+      </section>
+
+      <!-- Cột bên phải -->
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>🌸 Lễ chung của phòng</h2>
+          <div class="counters">
+            <div>🪔 Hương <b id="countHuong">0</b></div>
+            <div>🔔 Chuông <b id="countChuong">0</b></div>
+            <div>🕯️ Nến <b id="countNen">0</b></div>
+            <div>🌸 Hoa <b id="countHoa">0</b></div>
+            <div>📿 Niệm Phật <b id="countNiemPhat">0</b></div>
+            <div>✨ Lễ Phật <b id="countLePhat">0</b></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>👥 Đang ở trong chùa (<span id="playerCount">0</span>)</h2>
+          <ul id="playerList" class="player-list"></ul>
+        </section>
+
+        <section class="panel feed-panel">
+          <h2>✨ Hoạt động chung</h2>
+          <ul id="feedList" class="feed-list"></ul>
+        </section>
+
+        <section class="panel chat-panel">
+          <h2>💬 Trò chuyện</h2>
+          <div id="chatBox" class="chat-box"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" maxlength="200" placeholder="Chào mọi người..." autocomplete="off">
+            <button type="submit">Gửi</button>
+          </form>
+        </section>
+      </aside>
+    </main>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
